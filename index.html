@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIGNA — Weihnachtsmarkt Sechseläutenplatz</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green-50:#E8F5EE; --green-100:#C3E5D0; --green-400:#3A9E6A; --green-600:#1E7A4A; --green-800:#0F4F2E;
+  --amber-50:#FFF8E6; --amber-100:#FDEAB5; --amber-400:#F5A623; --amber-600:#B8760A; --amber-800:#7A4E00;
+  --red-50:#FFF0F0; --red-100:#FFCDD2; --red-600:#C62828; --red-800:#7B1919;
+  --stzh:#0F05A0;
+  --border:#e2e5ea; --text:#111; --text-2:#555; --text-3:#999;
+  --surface:#f5f7fa; --white:#fff; --radius:12px; --radius-sm:8px;
+}
+
+body {
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;
+  background:#0e1a2b;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:2rem 1rem 4rem;
+  gap:32px;
+}
+
+.device-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+.device {
+  width:320px; height:640px; background:var(--white);
+  border-radius:44px; border:2px solid #1a1a1a;
+  overflow:hidden; position:relative;
+  box-shadow:0 24px 48px rgba(0,0,0,0.45);
+}
+
+.status-bar {
+  height:44px; background:var(--white);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 22px 0 18px; flex-shrink:0; position:relative; z-index:10;
+}
+.status-bar .time { font-size:13px; font-weight:600; color:var(--text); }
+.status-bar .icons { display:flex; gap:5px; align-items:center; }
+.dynamic-island {
+  position:absolute; top:10px; left:50%; transform:translateX(-50%);
+  width:90px; height:26px; background:#1a1a1a; border-radius:20px;
+}
+
+.screens { width:100%; height:calc(640px - 44px); position:relative; overflow:hidden; }
+.screen {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  background:var(--white); transform:translateX(100%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto; overflow-x:hidden;
+}
+.screen.active  { transform:translateX(0); }
+.screen.exit    { transform:translateX(-100%); }
+.screen.back-exit { transform:translateX(100%); }
+.screen-body { padding:16px 20px 24px; flex:1; display:flex; flex-direction:column; }
+
+.progress { display:flex; gap:6px; justify-content:center; padding:8px 0 4px; }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--border); transition:background .2s; }
+.dot.done   { background:var(--green-100); }
+.dot.active { background:var(--green-600); }
+.dot.done.am  { background:var(--amber-100); }
+.dot.active.am{ background:var(--amber-600); }
+
+.nav-bar { height:40px; display:flex; align-items:center; padding:0 16px; flex-shrink:0; }
+.back-btn {
+  display:flex; align-items:center; gap:4px; font-size:13px;
+  cursor:pointer; padding:4px 0; background:none; border:none;
+  font-family:inherit; color:var(--green-600);
+}
+.back-btn.amber { color:var(--amber-600); }
+
+.heading { font-size:20px; font-weight:600; color:var(--text); line-height:1.25; }
+.hint    { font-size:11px; color:var(--text-3); line-height:1.5; }
+.divider { height:0.5px; background:var(--border); margin:10px 0; }
+
+.btn-p {
+  width:100%; background:var(--green-600); color:var(--white);
+  border:none; border-radius:var(--radius); padding:15px;
+  font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;
+  transition:opacity .15s,transform .1s; margin-top:auto; flex-shrink:0;
+}
+.btn-p:active { opacity:.85; transform:scale(.98); }
+.btn-p:disabled { opacity:.4; cursor:default; }
+.btn-p.am { background:var(--amber-600); }
+
+/* ── LANG SWITCHER ── */
+.lang-bar { display:flex; justify-content:flex-end; padding:6px 16px 0; flex-shrink:0; }
+.lang-btn {
+  display:flex; align-items:center; gap:5px;
+  background:var(--surface); border:0.5px solid var(--border);
+  border-radius:20px; padding:4px 10px 4px 8px;
+  font-size:11px; font-weight:500; color:var(--text-2);
+  cursor:pointer; font-family:inherit;
+}
+.lang-picker {
+  position:absolute; top:50px; right:12px;
+  background:var(--white); border:0.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 8px 24px rgba(0,0,0,0.13);
+  z-index:300; overflow:hidden; display:none; min-width:148px;
+}
+.lang-picker.open { display:block; }
+.lang-option {
+  display:flex; align-items:center; gap:10px; padding:10px 14px;
+  font-size:12px; font-weight:500; color:var(--text); cursor:pointer;
+  border-bottom:0.5px solid var(--border); font-family:inherit;
+  background:none; border-left:none; border-right:none; border-top:none;
+  width:100%; text-align:left;
+}
+.lang-option:last-child { border-bottom:none; }
+.lang-option.cur { color:var(--green-600); font-weight:700; }
+.lang-flag { font-size:15px; }
+
+/* ── S1 LANDING ── */
+.s1-head { font-size:21px; font-weight:600; color:var(--text); text-align:center; line-height:1.3; margin-bottom:10px; }
+.trust-row {
+  display:flex; align-items:center; justify-content:center;
+  gap:6px; font-size:11px; color:var(--text-3); margin-top:14px; flex-wrap:wrap;
+}
+.trust-dot { width:3px; height:3px; border-radius:50%; background:#D3D1C7; }
+.call117-link {
+  display:block; text-align:center; font-size:12px; color:var(--red-600);
+  margin-top:12px; text-decoration:none; font-weight:600;
+  background:var(--red-50); border:1px solid var(--red-100);
+  border-radius:var(--radius-sm); padding:8px 14px;
+}
+.tier3-prompt { display:none; background:var(--red-50); border:1px solid var(--red-100); border-radius:var(--radius); padding:10px 14px; margin-top:8px; text-align:center; }
+.tier3-prompt.show { display:block; }
+.tier3-prompt p { font-size:12px; color:var(--red-800); line-height:1.5; margin-bottom:6px; }
+.tier3-prompt a { font-size:13px; font-weight:600; color:var(--red-600); text-decoration:none; display:inline-block; padding:6px 16px; border:1.5px solid var(--red-600); border-radius:8px; }
+
+/* ── RTYPE CARDS ── */
+.rtype-screen { gap:0; }
+.rtype-header { padding:20px 20px 14px; flex-shrink:0; }
+.rtype-head { font-size:20px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.rtype-sub  { font-size:13px; color:var(--text-2); line-height:1.5; }
+.rtype-cards { display:flex; flex-direction:column; gap:10px; padding:0 20px 24px; flex:1; justify-content:center; }
+.rtype-card {
+  border-radius:14px; padding:16px 16px 14px;
+  display:flex; align-items:center; gap:14px; cursor:pointer;
+  transition:transform .1s,filter .15s; border:1.5px solid transparent;
+}
+.rtype-card:active { transform:scale(.98); filter:brightness(.96); }
+.rtype-card.green { background:var(--green-50); border-color:var(--green-100); }
+.rtype-card.amber { background:var(--amber-50); border-color:var(--amber-100); }
+.rtype-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.rtype-icon.green { background:var(--green-100); }
+.rtype-icon.amber { background:var(--amber-100); }
+.rtype-icon svg { width:22px; height:22px; }
+.rtype-body { flex:1; }
+.rtype-title { font-size:13px; font-weight:600; line-height:1.25; margin-bottom:3px; }
+.rtype-title.green { color:var(--green-800); }
+.rtype-title.amber { color:var(--amber-800); }
+.rtype-desc { font-size:11px; line-height:1.45; }
+.rtype-desc.green { color:var(--green-600); }
+.rtype-desc.amber { color:var(--amber-600); }
+
+/* ── S2 CATEGORY GRID ── */
+.card-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; flex:1; }
+.obs-card {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); padding:12px 8px 10px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  cursor:pointer; transition:border-color .15s,background .15s; user-select:none;
+}
+.obs-card.sel { background:var(--green-50); border-color:var(--green-400); }
+.obs-card .icw { width:32px; height:32px; border-radius:8px; background:var(--white); display:flex; align-items:center; justify-content:center; }
+.obs-card.sel .icw { background:var(--green-100); }
+.obs-card .icw svg { width:16px; height:16px; }
+.obs-card .lbl { font-size:10px; font-weight:500; color:var(--text-2); text-align:center; line-height:1.3; }
+.obs-card.sel .lbl { color:var(--green-800); }
+.tier-badge {
+  font-size:10px; color:var(--green-800); background:var(--green-50);
+  border:0.5px solid var(--green-100); border-radius:6px;
+  padding:5px 10px; text-align:center; margin-bottom:8px; flex-shrink:0;
+}
+
+/* ── S3 LOCATION ── */
+.loc-card {
+  background:var(--green-50); border:1.5px solid var(--green-100);
+  border-radius:var(--radius); padding:14px;
+  display:flex; align-items:center; gap:12px; margin-bottom:6px;
+}
+.loc-dot { width:10px; height:10px; border-radius:50%; background:var(--green-600); flex-shrink:0; }
+.loc-name { font-size:14px; font-weight:600; color:var(--green-800); }
+.loc-sub  { font-size:11px; color:var(--green-600); margin-top:1px; }
+.auto-badge {
+  margin-left:auto; font-size:9px; font-weight:600;
+  background:var(--green-100); color:var(--green-800);
+  border-radius:5px; padding:3px 7px; letter-spacing:.04em; flex-shrink:0;
+}
+.ov-link {
+  font-size:11px; color:var(--text-3); text-align:center;
+  text-decoration:underline; text-underline-offset:2px; cursor:pointer;
+  padding:5px 0 8px; display:block; background:none; border:none;
+  width:100%; font-family:inherit;
+}
+.ov-panel {
+  background:var(--surface); border:0.5px solid var(--border);
+  border-radius:var(--radius); padding:12px; margin-bottom:8px; display:none;
+}
+.ov-panel.open { display:block; }
+.zone-tabs { display:flex; gap:5px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; }
+.zone-tabs::-webkit-scrollbar { display:none; }
+.zone-tab {
+  flex-shrink:0; font-size:10px; font-weight:600; padding:5px 10px;
+  border-radius:20px; border:1px solid var(--border);
+  background:var(--white); color:var(--text-2); cursor:pointer;
+  transition:all .15s; white-space:nowrap;
+}
+.zone-tab.active { background:var(--green-600); color:var(--white); border-color:var(--green-600); }
+.gate-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-bottom:6px; }
+.gate-btn {
+  background:var(--white); border:0.5px solid var(--border);
+  border-radius:7px; font-size:9px; font-weight:600; color:var(--text-2);
+  text-align:center; padding:7px 3px; cursor:pointer; transition:all .12s; line-height:1.2;
+}
+.gate-btn.sel { background:var(--green-50); border-color:var(--green-400); color:var(--green-800); }
+.zone-info-strip {
+  font-size:9px; color:var(--text-3); background:var(--white);
+  border-radius:6px; padding:5px 8px; margin-bottom:8px;
+  border:0.5px solid var(--border); line-height:1.5;
+}
+.time-row { display:flex; gap:8px; margin:10px 0 6px; }
+.time-btn {
+  flex:1; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:10px; font-size:12px;
+  font-weight:500; color:var(--text-2); text-align:center;
+  cursor:pointer; transition:all .12s; font-family:inherit;
+}
+.time-btn.sel { background:var(--green-50); border-color:var(--green-400); color:var(--green-800); }
+.tier-info { font-size:10px; color:var(--text-3); text-align:center; margin-top:4px; margin-bottom:6px; }
+
+/* ── S4 DETAILS ── */
+.opt-group { display:flex; flex-direction:column; gap:5px; padding:10px 0 4px; }
+.opt-lbl { font-size:12px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.opt-tag { font-size:9px; font-weight:500; color:var(--text-3); background:var(--surface); border:0.5px solid var(--border); border-radius:4px; padding:2px 6px; }
+.opt-hint { font-size:10px; color:var(--text-3); line-height:1.4; }
+.opt-inp {
+  width:100%; background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius-sm); padding:9px 12px;
+  font-size:13px; color:var(--text); font-family:inherit; outline:none;
+  transition:border-color .15s,background .15s;
+}
+.opt-inp:focus { border-color:var(--green-400); background:var(--white); }
+.ta { resize:none; line-height:1.5; }
+
+/* ── CONFIRM ── */
+.chk-ring { width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:18px; background:var(--green-50); }
+.s4-head { font-size:18px; font-weight:600; color:var(--text); line-height:1.3; margin-bottom:10px; text-align:center; }
+.info-box { border-radius:var(--radius-sm); padding:10px 14px; font-size:11px; line-height:1.6; text-align:center; }
+.info-box.green { background:var(--green-50); color:var(--green-800); }
+.info-box.amber { background:var(--amber-50); color:var(--amber-800); }
+.alert-strip { background:var(--red-50); border:1px solid var(--red-100); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:flex-start; gap:10px; margin-top:10px; }
+.alert-dot  { width:8px; height:8px; border-radius:50%; background:var(--red-600); margin-top:3px; flex-shrink:0; }
+.alert-text { font-size:11px; color:var(--red-800); line-height:1.5; }
+.alert-text strong { font-weight:700; }
+
+/* ── UNATTENDED ITEM FLOW ── */
+.item-flow-hdr { background:var(--amber-50); border-bottom:1px solid var(--amber-100); padding:12px 20px 10px; flex-shrink:0; }
+.item-flow-title { font-size:15px; font-weight:700; color:var(--amber-800); margin-bottom:1px; }
+.item-flow-sub   { font-size:10px; color:var(--amber-600); }
+.item-type-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.item-type-btn {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); padding:12px 8px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  cursor:pointer; transition:border-color .15s,background .15s; font-family:inherit;
+}
+.item-type-btn.sel { background:var(--amber-50); border-color:var(--amber-400); }
+.item-type-btn .bt-ic { width:32px; height:32px; border-radius:8px; background:var(--white); display:flex; align-items:center; justify-content:center; }
+.item-type-btn.sel .bt-ic { background:var(--amber-100); }
+.item-type-btn .bt-ic svg { width:16px; height:16px; }
+.item-type-btn .bt-lbl { font-size:10px; font-weight:500; color:var(--text-2); text-align:center; line-height:1.3; }
+.item-type-btn.sel .bt-lbl { color:var(--amber-800); }
+.item-loc-card { background:var(--amber-50); border:1.5px solid var(--amber-100); border-radius:var(--radius); padding:14px; display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+.item-loc-dot  { width:10px; height:10px; border-radius:50%; background:var(--amber-600); flex-shrink:0; }
+.item-loc-name { font-size:14px; font-weight:600; color:var(--amber-800); }
+.item-loc-sub  { font-size:11px; color:var(--amber-600); margin-top:1px; }
+.item-auto-badge { margin-left:auto; font-size:9px; font-weight:600; background:var(--amber-100); color:var(--amber-800); border-radius:5px; padding:3px 7px; letter-spacing:.04em; flex-shrink:0; }
+.zone-sel-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:5px; margin-bottom:10px; }
+.zone-sel-btn { background:var(--white); border:0.5px solid var(--border); border-radius:7px; font-size:10px; font-weight:500; color:var(--text-2); text-align:center; padding:8px 6px; cursor:pointer; font-family:inherit; line-height:1.3; }
+.zone-sel-btn.sel { background:var(--amber-50); border-color:var(--amber-400); color:var(--amber-800); }
+
+/* ── NODE DB PANEL ── */
+.db-panel {
+  width:100%; max-width:900px; background:#0e1a2b;
+  border-radius:16px; padding:24px;
+  font-family:'SF Mono','Fira Code','Consolas',monospace;
+  border:1px solid #1e3050;
+}
+.db-panel h2 { font-size:11px; color:#6a8aaa; letter-spacing:.1em; text-transform:uppercase; margin-bottom:16px; }
+.db-zones { display:flex; flex-direction:column; gap:16px; }
+.db-zh { font-size:10px; font-weight:700; color:#5b9bd5; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #1e3050; }
+.db-zh span { color:#2a4060; font-weight:400; margin-left:8px; }
+.db-nodes { display:flex; flex-wrap:wrap; gap:6px; }
+.db-node { background:#0a1520; border:1px solid #1e3050; border-radius:8px; padding:7px 10px; display:flex; flex-direction:column; gap:2px; }
+.nid  { font-size:9px;  color:#5b9bd5; font-weight:700; }
+.nnm  { font-size:10px; color:#a0b8cc; font-weight:500; }
+.nqr  { font-size:8px;  color:#1e3050; font-style:italic; margin-top:2px; }
+.stat-row { display:flex; gap:20px; margin-top:20px; padding-top:16px; border-top:1px solid #1e3050; flex-wrap:wrap; }
+.stat .n { font-size:22px; font-weight:700; color:#5b9bd5; }
+.stat .l { font-size:9px; color:#2a4060; text-transform:uppercase; letter-spacing:.06em; }
+.device-label { font-size:12px; color:#6a8aaa; letter-spacing:.05em; font-weight:500; }
+
+/* ── STZH BADGE ── */
+.stzh-badge {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 10px 6px 10px;
+  background:rgba(15,5,160,0.06);
+  border-bottom:1px solid rgba(15,5,160,0.1);
+  flex-shrink:0;
+}
+.stzh-badge img { height:18px; width:auto; }
+.stzh-label { font-size:9px; font-weight:600; color:var(--stzh); letter-spacing:.06em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+
+<div class="device-wrap">
+<div class="device">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="time" id="clk">9:41</span>
+    <div class="dynamic-island"></div>
+    <div class="icons">
+      <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M1 5c1.9-2.5 4.5-4 7-4s5.1 1.5 7 4" stroke="#111" stroke-width="1.5" stroke-linecap="round"/><path d="M3.5 7.5C5 5.8 6.4 5 8 5s3 .8 4.5 2.5" stroke="#111" stroke-width="1.5" stroke-linecap="round"/><path d="M6 10c.6-.7 1.2-1 2-1s1.4.3 2 1" stroke="#111" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="12.5" r="1" fill="#111"/></svg>
+      <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><rect x="1" y="4" width="11" height="8" rx="1.5" stroke="#111" stroke-width="1.3"/><path d="M13.5 7v2.5" stroke="#111" stroke-width="1.5" stroke-linecap="round"/><rect x="2.5" y="5.5" width="7" height="5" rx=".5" fill="#111"/></svg>
+    </div>
+  </div>
+
+  <div class="screens">
+
+  <!-- LANG PICKER -->
+  <div class="lang-picker" id="langPicker">
+    <button class="lang-option cur" onclick="setLang('de')"><span class="lang-flag">🇨🇭</span> Deutsch</button>
+    <button class="lang-option" onclick="setLang('en')"><span class="lang-flag">🇬🇧</span> English</button>
+    <button class="lang-option" onclick="setLang('fr')"><span class="lang-flag">🇫🇷</span> Français</button>
+    <button class="lang-option" onclick="setLang('it')"><span class="lang-flag">🇮🇹</span> Italiano</button>
+    <button class="lang-option" onclick="setLang('es')"><span class="lang-flag">🇪🇸</span> Español</button>
+    <button class="lang-option" onclick="setLang('zh')"><span class="lang-flag">🇨🇳</span> 中文</button>
+    <button class="lang-option" onclick="setLang('ar')"><span class="lang-flag">🇸🇦</span> العربية</button>
+    <button class="lang-option" onclick="setLang('hi')"><span class="lang-flag">🇮🇳</span> हिन्दी</button>
+  </div>
+
+  <!-- S1: LANDING -->
+  <div class="screen active" id="s1">
+    <div class="stzh-badge">
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI0LjMuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkViZW5lXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHdpZHRoPSIyNTAuMXB4IiBoZWlnaHQ9IjgxLjVweCIgdmlld0JveD0iMCAwIDI1MC4xIDgxLjUiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDI1MC4xIDgxLjU7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHRpdGxlPkxvZ28gU3RhZHQgWsO8cmljaDwvdGl0bGU+CjxtZXRhZGF0YT48P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJBZG9iZSBYTVAgQ29yZSA2LjAtYzAwMiA3OS4xNjQzNTIsIDIwMjAvMDEvMzAtMTU6NTA6MzggICAgICAgICI+CiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgICAgICAgICAgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIgogICAgICAgICAgICB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIKICAgICAgICAgICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgICAgICAgICAgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIj4KICAgICAgICAgPHBob3Rvc2hvcDpIZWFkbGluZT5Mb2dvIFN0YWR0IFrDvHJpY2g8L3Bob3Rvc2hvcDpIZWFkbGluZT4KICAgICAgICAgPHBob3Rvc2hvcDpDYXB0aW9uV3JpdGVyPlN0YWR0IFrDvHJpY2g8L3Bob3Rvc2hvcDpDYXB0aW9uV3JpdGVyPgogICAgICAgICA8cGhvdG9zaG9wOkRhdGVDcmVhdGVkPjIwMjAtMDUtMDFUMDA6MDBaPC9waG90b3Nob3A6RGF0ZUNyZWF0ZWQ+CiAgICAgICAgIDx4bXA6TWV0YWRhdGFEYXRlPjIwMjAtMTAtMDFUMTA6Mzg6MTcrMDI6MDA8L3htcDpNZXRhZGF0YURhdGU+CiAgICAgICAgIDx4bXBNTTpJbnN0YW5jZUlEPnhtcC5paWQ6ZWVhMmE0NGEtMGZlZi00Mjg5LTkwYmEtMTY4MWFjNDE1NmMxPC94bXBNTTpJbnN0YW5jZUlEPgogICAgICAgICA8eG1wTU06RG9jdW1lbnRJRD54bXAuZGlkOmFiZDgxYzYxLTQ0YmEtNDdmNC1hYmM0LTgzZWNkZGMyOWEyNTwveG1wTU06RG9jdW1lbnRJRD4KICAgICAgICAgPHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD54bXAuZGlkOmFiZDgxYzYxLTQ0YmEtNDdmNC1hYmM0LTgzZWNkZGMyOWEyNTwveG1wTU06T3JpZ2luYWxEb2N1bWVudElEPgogICAgICAgICA8eG1wTU06SGlzdG9yeT4KICAgICAgICAgICAgPHJkZjpTZXE+CiAgICAgICAgICAgICAgIDxyZGY6bGk+CiAgICAgICAgICAgICAgICAgIDxyZGY6RGVzY3JpcHRpb24+CiAgICAgICAgICAgICAgICAgICAgIDxzdEV2dDphY3Rpb24+c2F2ZWQ8L3N0RXZ0OmFjdGlvbj4KICAgICAgICAgICAgICAgICAgICAgPHN0RXZ0Omluc3RhbmNlSUQ+eG1wLmlpZDphYmQ4MWM2MS00NGJhLTQ3ZjQtYWJjNC04M2VjZGRjMjlhMjU8L3N0RXZ0Omluc3RhbmNlSUQ+CiAgICAgICAgICAgICAgICAgICAgIDxzdEV2dDp3aGVuPjIwMjAtMTAtMDFUMTA6MzM6NTIrMDI6MDA8L3N0RXZ0OndoZW4+CiAgICAgICAgICAgICAgICAgICAgIDxzdEV2dDpzb2Z0d2FyZUFnZW50PkFkb2JlIEJyaWRnZSAyMDIwIChNYWNpbnRvc2gpPC9zdEV2dDpzb2Z0d2FyZUFnZW50PgogICAgICAgICAgICAgICAgICAgICA8c3RFdnQ6Y2hhbmdlZD4vbWV0YWRhdGE8L3N0RXZ0OmNoYW5nZWQ+CiAgICAgICAgICAgICAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICAgICAgICAgICAgICA8L3JkZjpsaT4KICAgICAgICAgICAgICAgPHJkZjpsaT4KICAgICAgICAgICAgICAgICAgPHJkZjpEZXNjcmlwdGlvbj4KICAgICAgICAgICAgICAgICAgICAgPHN0RXZ0OmFjdGlvbj5zYXZlZDwvc3RFdnQ6YWN0aW9uPgogICAgICAgICAgICAgICAgICAgICA8c3RFdnQ6aW5zdGFuY2VJRD54bXAuaWlkOmVlYTJhNDRhLTBmZWYtNDI4OS05MGJhLTE2ODFhYzQxNTZjMTwvc3RFdnQ6aW5zdGFuY2VJRD4KICAgICAgICAgICAgICAgICAgICAgPHN0RXZ0OndoZW4+MjAyMC0xMC0wMVQxMDozODoxNyswMjowMDwvc3RFdnQ6d2hlbj4KICAgICAgICAgICAgICAgICAgICAgPHN0RXZ0OnNvZnR3YXJlQWdlbnQ+QWRvYmUgQnJpZGdlIDIwMjAgKE1hY2ludG9zaCk8L3N0RXZ0OnNvZnR3YXJlQWdlbnQ+CiAgICAgICAgICAgICAgICAgICAgIDxzdEV2dDpjaGFuZ2VkPi9tZXRhZGF0YTwvc3RFdnQ6Y2hhbmdlZD4KICAgICAgICAgICAgICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgICAgICAgICAgICAgIDwvcmRmOmxpPgogICAgICAgICAgICA8L3JkZjpTZXE+CiAgICAgICAgIDwveG1wTU06SGlzdG9yeT4KICAgICAgICAgPGRjOmNyZWF0b3I+CiAgICAgICAgICAgIDxyZGY6U2VxPgogICAgICAgICAgICAgICA8cmRmOmxpPlN0YWR0IFrDvHJpY2g8L3JkZjpsaT4KICAgICAgICAgICAgPC9yZGY6U2VxPgogICAgICAgICA8L2RjOmNyZWF0b3I+CiAgICAgICAgIDxkYzp0aXRsZT4KICAgICAgICAgICAgPHJkZjpBbHQ+CiAgICAgICAgICAgICAgIDxyZGY6bGkgeG1sOmxhbmc9IngtZGVmYXVsdCI+TG9nbyBTdGFkdCBaw7xyaWNoPC9yZGY6bGk+CiAgICAgICAgICAgIDwvcmRmOkFsdD4KICAgICAgICAgPC9kYzp0aXRsZT4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAo8P3hwYWNrZXQgZW5kPSJ3Ij8+PC9tZXRhZGF0YT4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDpub25lO30KCS5zdDF7ZmlsbDojMEYwNUEwO30KPC9zdHlsZT4KPHJlY3QgY2xhc3M9InN0MCIgd2lkdGg9IjI1MC4xIiBoZWlnaHQ9IjgxLjUiLz4KPGc+Cgk8ZyBpZD0iQmlsZG1hcmtlIj4KCQk8cGF0aCBjbGFzcz0ic3QxIiBkPSJNODMsMzljLTAuMywwLTAuNiwwLjEtMC45LDAuMmMtMC40LTEuNC0wLjgtMi44LTEuMS00LjJsMS42LTIuMmMwLjItMC4zLDIuOS0zLjcsMi45LTYuOQoJCQljMC00LjctNC00LjgtNC40LTQuOGMtMSwwLTIuNSwwLjQtMy40LDEuNmMtMC45LDEuMS0xLjEsMi42LTAuNyw0LjRjMC4xLDAuMywxLDMuOSwyLDcuNWwtMS42LDIuMWwtMy41LTEzLjRsOC01LjlsMCwwCgkJCWMyLjItMS43LDMuNS00LjQsMy41LTcuMmMwLTQuMy0zLTgtNy4xLTguOVYwLjRMNzYuNywwdjFsLTQuNi0wLjNoLTEuNXYzLjdoMS41YzAuNCwwLDAuOCwwLjQsMC44LDAuOFM3Mi41LDYsNzIuMSw2bC01LTAuNQoJCQlsMC40LDEuNkw3Miw3LjVsMCwwaDAuMWMxLjMsMCwyLjMtMSwyLjMtMi4zcy0xLTIuMy0yLjMtMi4zVjIuM2w0LjUsMC4zdjQuM2MwLDAuNS0wLjIsMC45LTAuNSwxLjJzLTAuOCwwLjUtMS4zLDAuNGwtNS4xLTAuMwoJCQlsMC40LDEuNWwwLDBjLTEuNCwwLjktMi42LDIuMS0zLjUsMy40bC0yLTQuM0M2NC45LDguMyw2NSw3LjcsNjUsNy4yYzAtMi0xLjYtMy42LTMuNi0zLjZjLTEuMywwLTIuNCwwLjYtMywxLjZMNTguOCwxSDI2LjcKCQkJTDI3LDUuM2MtMC42LTEtMS44LTEuNi0zLTEuNmMtMiwwLTMuNiwxLjYtMy42LDMuNmMwLDAuNiwwLjEsMS4xLDAuNCwxLjZsLTIsNC4zYy0wLjktMS40LTIuMS0yLjUtMy41LTMuNGwwLDBsMC40LTEuNWwtNS4xLDAuMwoJCQljLTAuNSwwLTAuOS0wLjEtMS4zLTAuNEM5LDcuNyw4LjksNy4zLDguOSw2LjhWMi41bDQuNS0wLjN2MC42Yy0xLjMsMC0yLjMsMS4xLTIuMywyLjNjMCwxLjMsMSwyLjMsMi4zLDIuM2gwLjFMMTgsNy4xbDAuNC0xLjYKCQkJbC01LDAuNWMtMC40LDAtMC44LTAuNC0wLjgtMC44czAuNC0wLjgsMC44LTAuOGgxLjVWMC44aC0xLjVMOC45LDFWMEw3LjMsMC40djAuOGMtNC4yLDAuOS03LjEsNC42LTcuMSw4LjkKCQkJYzAsMi44LDEuMyw1LjUsMy41LDcuMmw4LDUuOUw4LjIsMzYuN2wtMS42LTIuMWMxLTMuNSwxLjktNy4xLDItNy41YzAuNC0xLjgsMC4yLTMuMy0wLjctNC40Yy0wLjktMS4yLTIuNC0xLjYtMy40LTEuNgoJCQlDNCwyMS4xLDAsMjEuMywwLDI2YzAsMy4xLDIuNyw2LjUsMi45LDYuOUw0LjUsMzVjLTAuNCwxLjQtMC44LDIuOC0xLjEsNC4yQzMuMiwzOS4xLDIuOSwzOSwyLjYsMzljLTEuMiwwLTIuMiwxLTIuMiwyLjIKCQkJczEsMi4yLDIuMiwyLjJjMSwwLDEuOS0wLjcsMi4xLTEuNmwwLDBDNC44LDQxLjMsNS40LDM5LjMsNiwzN2wxLjYsMi4xTDMuNCw1NC45bDAsMGMtMC4xLDAuMy0wLjEsMC41LTAuMSwwLjgKCQkJYzAsMiwxLjYsMy42LDMuNiwzLjZzMy42LTEuNiwzLjYtMy42YzAtMC45LTAuMy0xLjctMC45LTIuNGwzLjctNmw3LjQsMTAuNGMwLjcsMSwxLjgsMS41LDMsMS41YzIsMCwzLjYtMS42LDMuNi0zLjYKCQkJUzI1LjcsNTIsMjMuNyw1MmMtMC4xLDAtMC4xLDAtMC4yLDBsLTUtMTQuMmMtMC41LTEuMy0xLjYtMi4yLTMtMi40Yy0wLjIsMC0wLjQsMC0wLjYsMGwzLjQtNy40bDQuNSwzLjNjMC42LDAuNSwxLjQsMC44LDIuMiwwLjgKCQkJYzAuMiwwLDAuNCwwLDAuNy0wLjFMMjcsNDUuMWMwLjQsMy42LDIuMyw3LjEsNS4zLDkuOGMzLjEsMi44LDYuOCw0LjMsMTAuNiw0LjNsMCwwYzMuOCwwLDcuNi0xLjUsMTAuNi00LjMKCQkJYzMtMi43LDQuOS02LjMsNS4zLTkuOGwxLjItMTNjMC4yLDAsMC40LDAuMSwwLjcsMC4xYzAuOCwwLDEuNi0wLjMsMi4yLTAuOGw0LjUtMy4zbDMuNCw3LjRjLTAuMiwwLTAuNCwwLTAuNiwwCgkJCWMtMS40LDAuMi0yLjUsMS4xLTMsMi40bC01LDE0LjJjLTAuMSwwLTAuMSwwLTAuMiwwYy0yLDAtMy42LDEuNi0zLjYsMy42czEuNiwzLjYsMy42LDMuNmMxLjIsMCwyLjMtMC42LDMtMS41bDcuNC0xMC40bDMuNyw2CgkJCUM3NS4zLDU0LDc1LDU0LjgsNzUsNTUuN2MwLDIsMS42LDMuNiwzLjYsMy42czMuNi0xLjYsMy42LTMuNmMwLTAuMywwLTAuNS0wLjEtMC44TDc4LDM5LjFsMS42LTIuMWMwLjYsMi4zLDEuMiw0LjMsMS4zLDQuOGwwLDAKCQkJYzAuMiwwLjksMS4xLDEuNiwyLjEsMS42YzEuMiwwLDIuMi0xLDIuMi0yLjJTODQuMiwzOSw4MywzOXogTTUuMiwzMi43bC0wLjctMWwwLDBDMy44LDMwLjgsMiwyOC4xLDIsMjZjMC0yLjYsMS44LTIuOSwyLjUtMi45CgkJCWMwLjYsMCwxLjQsMC4yLDIsMC45YzAuNSwwLjYsMC42LDEuNiwwLjQsMi44QzYuNywyNyw2LDI5LjUsNS4yLDMyLjd6IE02MS42LDUuNWMxLDAsMS43LDAuOCwxLjcsMS43YzAsMC40LTAuMSwwLjctMC4zLDEKCQkJbC0wLjMsMC40bDMuMSw2LjVjLTAuNCwxLjEtMC43LDIuMi0wLjcsMy40bC01LTEwLjhDNjAsNy41LDYwLDcuMyw2MCw3LjFDNTkuOCw2LjMsNjAuNiw1LjUsNjEuNiw1LjV6IE01MC45LDEwLjNoLTQuNFY4LjJINTEKCQkJTDUwLjksMTAuM3ogTTQ1LDEwLjNoLTQuNFY4LjJINDVWMTAuM3ogTTM5LjEsMTAuM2gtNC40bC0wLjEtMi4xSDM5TDM5LjEsMTAuM3ogTTMzLjEsMTAuM0gyOWwtMC4yLTIuMWg0LjNWMTAuM3ogTTU2LjUsMTEuOQoJCQlsLTAuMiwyLjVoLTI3bC0wLjItMi41SDU2LjV6IE01Ni42LDEwLjNoLTQuMmwwLjEtMi4xaDQuM0w1Ni42LDEwLjN6IE01NC4yLDIuNmwtMC4xLDIuN2gxLjVsMC4xLTIuN2gxLjVsLTAuMyw0LjFoLTQuNGwwLjEtNC4xCgkJCUM1Mi43LDIuNiw1NC4yLDIuNiw1NC4yLDIuNnogTTQ4LjEsMi42TDQ4LDUuM2gxLjVsMC4xLTIuN2gxLjVMNTEsNi43aC00LjVsMC4xLTQuMUg0OC4xeiBNNDIsMi42djIuN2gxLjVWMi42SDQ1djQuMWgtNC41CgkJCWwtMC4xLTQuMUM0MC41LDIuNiw0MiwyLjYsNDIsMi42eiBNMzUuOSwyLjZMMzYsNS4zaDEuNWwtMC4xLTIuN0gzOXY0LjFoLTQuNWwtMC4xLTQuMUgzNS45eiBNMjkuOCwyLjZMMzAsNS4zaDEuNWwtMC4xLTIuN2gxLjUKCQkJTDMzLDYuN2gtNC40bC0wLjMtNC4xQzI4LjMsMi42LDI5LjgsMi42LDI5LjgsMi42eiBNMjcuMyw4LjdsMC42LDcuMmgyOS44bDAuNi03LjJsNi41LDE0bC0zLjMsMi40QzYxLjMsMjUsNjEsMjUsNjAuNywyNQoJCQlsMC42LTYuNWgtMzdsMC42LDYuNWMtMC4zLDAtMC42LDAtMC45LDAuMWwtMy4zLTIuNEwyNy4zLDguN3ogTTI4LjQsMjcuNGgzLjlsMi41LDIuNGgtNi40YzAuMS0wLjQsMC4yLTAuOCwwLjItMS4yCgkJCUMyOC42LDI4LjIsMjguNSwyNy44LDI4LjQsMjcuNHogTTI3LjQsMjUuOWMtMC4xLTAuMS0wLjMtMC4zLTAuNS0wLjRsLTAuMy0zLjZsNC4xLDMuOWgtMy4zQzI3LjQsMjUuOCwyNy40LDI1LjksMjcuNCwyNS45egoJCQkgTTIyLjksOC43bC0wLjMtMC40Yy0wLjItMC4zLTAuMy0wLjctMC4zLTFjMC0xLDAuOC0xLjcsMS43LTEuN2MxLDAsMS43LDAuOCwxLjcsMS43YzAsMC4yLDAsMC40LTAuMSwwLjZsLTUsMTAuOAoJCQljLTAuMS0xLjItMC4zLTIuMy0wLjctMy40TDIyLjksOC43eiBNMTUuMiwzNy40YzAuNCwwLjEsMS4yLDAuMywxLjUsMS4ybDUuNiwxNS44bDAuOS0wLjNjMC4yLTAuMSwwLjQtMC4xLDAuNS0wLjEKCQkJYzEsMCwxLjcsMC44LDEuNywxLjdzLTAuOCwxLjctMS43LDEuN2MtMC42LDAtMS4xLTAuMy0xLjQtMC43bC03LjgtMTEuMWwwLjUtMC45YzAuMy0wLjYsMC41LTEuMiwwLjUtMS44YzAtMS42LTEuMS0zLTIuNi0zLjQKCQkJbDAuOC0xLjhDMTQsMzcuNSwxNC42LDM3LjMsMTUuMiwzNy40eiBNMTAuNywzOS44bDEuMSwxLjVjMC4xLDAsMC4yLDAsMC4zLDBjMC45LDAsMS42LDAuNywxLjYsMS42YzAsMC4zLTAuMSwwLjYtMC4yLDAuOAoJCQlsLTYuMywxMEw4LDU0LjJjMC41LDAuMywwLjgsMC45LDAuOCwxLjRjMCwxLTAuOCwxLjctMS43LDEuN3MtMS43LTAuOC0xLjctMS43YzAtMC4xLDAtMC4yLDAtMC40bDguMS0zMC45bDMuNCwyLjVMMTAuNywzOS44egoJCQkgTTI1LDMwLjNjLTAuNCwwLTAuOC0wLjEtMS4xLTAuNGwtMTktMTQuMWMtMS44LTEuNC0yLjgtMy41LTIuOC01LjdjMC0zLjMsMi4yLTYuMSw1LjItN3YzLjZjMCwwLjksMC40LDEuNywxLDIuMwoJCQljMC42LDAuNywxLjQsMSwyLjIsMWMwLjEsMCwwLjEsMCwwLjIsMGwxLjQtMC4xYzAuMywwLjEsMC42LDAuMiwwLjcsMC4yYzMuOCwxLjUsNi4zLDUuMiw2LjMsOS4zYzAsMC42LTAuMSwxLjMtMC4yLDEuOWwtNC0yLjkKCQkJbC0wLjUsMmw5LjMsNi45bDAuNS0wLjJjMC40LTAuMiwwLjktMC4yLDEuNCwwYzAuNiwwLjMsMS4xLDAuOSwxLjEsMS42YzAsMC42LTAuMywxLjEtMC44LDEuNEMyNS42LDMwLjIsMjUuMywzMC4zLDI1LDMwLjN6CgkJCSBNMjcuNCwzMS4zaDguOWwyLjUsMi40SDI3LjdMMjcuNCwzMS4zeiBNMjcuOCwzNS4yaDEyLjZsMi41LDIuNEgyOC4xTDI3LjgsMzUuMnogTTI4LjIsMzkuMWgxNi4zbDIuNSwyLjRIMjguNEwyOC4yLDM5LjF6CgkJCSBNMjguOCw0NS4xbC0wLjItMmgyMGwyLjUsMi40SDI4LjhDMjguOCw0NS4zLDI4LjgsNDUuMiwyOC44LDQ1LjF6IE0yOS4xLDQ3aDIzLjVsMi41LDIuNGgtMjVDMjkuNyw0OC42LDI5LjQsNDcuOCwyOS4xLDQ3egoJCQkgTTQyLjgsNTcuNWMtMi44LDAtNS42LTEtNy45LTIuNmgxNS44QzQ4LjQsNTYuNSw0NS42LDU3LjUsNDIuOCw1Ny41eiBNNTIuNSw1My4zSDMzYy0wLjgtMC43LTEuNC0xLjUtMi0yLjRoMjMuNgoJCQlDNTQsNTEuOCw1My4zLDUyLjYsNTIuNSw1My4zeiBNNTYuOCw0NS4xYy0wLjEsMC45LTAuMywxLjgtMC42LDIuN0wyNy43LDIwLjRoMzEuNWwtMC41LDUuMWMtMSwwLjctMS43LDEuOC0xLjcsMy4xCgkJCWMwLDEsMC40LDIsMS4xLDIuNkw1Ni44LDQ1LjF6IE02MS43LDI5LjlMNjEuNywyOS45Yy0wLjMsMC4zLTAuNywwLjQtMS4xLDAuNGMtMC4zLDAtMC43LTAuMS0xLTAuM2MtMC41LTAuMy0wLjgtMC45LTAuOC0xLjQKCQkJYzAtMC43LDAuNC0xLjMsMS4xLTEuNmMwLjQtMC4yLDAuOS0wLjIsMS40LDBsMC41LDAuMmw5LjMtNi45bC0wLjUtMmwtNCwyLjljLTAuMS0wLjYtMC4yLTEuMi0wLjItMS45YzAtNC4xLDIuNS03LjcsNi4zLTkuMwoJCQljMC4xLDAsMC40LTAuMSwwLjctMC4ybDEuNCwwLjFjMC4xLDAsMC4xLDAsMC4yLDBjMC44LDAsMS42LTAuMywyLjItMC45YzAuNi0wLjYsMS0xLjQsMS0yLjNWMy4xYzMuMSwwLjksNS4yLDMuNyw1LjIsNwoJCQljMCwyLjItMSw0LjMtMi44LDUuN0w2MS43LDI5Ljl6IE02My4zLDU2LjdjLTAuMywwLjUtMC45LDAuNy0xLjQsMC43Yy0xLDAtMS43LTAuOC0xLjctMS43UzYxLDU0LDYxLjksNTRjMC4yLDAsMC40LDAsMC41LDAuMQoJCQlsMC45LDAuM2w1LjYtMTUuOGMwLjMtMC45LDEuMS0xLjEsMS41LTEuMmMwLjYtMC4xLDEuMiwwLjEsMS40LDAuM2wwLjgsMS44QzcxLjEsMzkuOSw3MCw0MS4zLDcwLDQzYzAsMC42LDAuMiwxLjMsMC41LDEuOAoJCQlsMC41LDAuOUw2My4zLDU2Ljd6IE04MC4zLDU1LjRjMCwwLjEsMCwwLjIsMCwwLjRjMCwxLTAuOCwxLjctMS43LDEuN3MtMS43LTAuOC0xLjctMS43YzAtMC42LDAuMy0xLjEsMC44LTEuNGwwLjgtMC41bC02LjMtMTAKCQkJQzcyLDQzLjYsNzIsNDMuNCw3Miw0My4xYzAtMC45LDAuNy0xLjYsMS42LTEuNmMwLjEsMCwwLjIsMCwwLjMsMEw3NSw0MGwtNi0xMi45bDMuNC0yLjVMODAuMyw1NS40eiBNNzguOCwyNi43CgkJCWMtMC4zLTEuMy0wLjItMi4yLDAuNC0yLjhjMC41LTAuNiwxLjQtMC45LDItMC45YzAuOCwwLDIuNSwwLjMsMi41LDIuOWMwLDIuNS0yLjUsNS42LTIuNSw1LjdsLTAuOCwxCgkJCUM3OS42LDI5LjUsNzguOSwyNyw3OC44LDI2Ljd6Ii8+Cgk8L2c+Cgk8ZyBpZD0iU3RhZHRfWsO8cmljaCI+CgkJPGc+CgkJCTxnPgoJCQkJPHBhdGggY2xhc3M9InN0MSIgZD0iTTExMi4yLDIuMmMyLjIsMCwzLjksMC41LDUuMiwxLjVjMS4zLDEsMS45LDIuNCwxLjksNC4yaC0zLjhjMC0wLjktMC40LTEuNi0wLjktMgoJCQkJCWMtMC42LTAuNC0xLjQtMC43LTIuNi0wLjdjLTAuOCwwLTEuNSwwLjItMiwwLjVzLTAuOCwwLjktMC44LDEuNWMwLDAuNSwwLjIsMC45LDAuNSwxLjFjMC4zLDAuMiwwLjcsMC40LDEuMywwLjYKCQkJCQljMC42LDAuMiwxLjYsMC40LDMsMC44YzEuNSwwLjQsMi42LDAuOCwzLjQsMS4yczEuNCwxLDEuOCwxLjdzMC42LDEuNSwwLjYsMi41YzAsMS4xLTAuMywyLjEtMC45LDNzLTEuNSwxLjYtMi42LDIKCQkJCQlzLTIuNCwwLjctMy45LDAuN2MtMi4yLDAtNC0wLjYtNS41LTEuN2MtMS40LTEuMS0yLjEtMi42LTIuMS00LjZ2LTAuMWgzLjhjMCwxLDAuNCwxLjksMS4xLDIuNGMwLjcsMC42LDEuNywwLjksMi44LDAuOQoJCQkJCWMxLDAsMS45LTAuMiwyLjUtMC42czEtMC45LDEtMS43YzAtMC41LTAuMi0wLjktMC41LTEuMnMtMC44LTAuNi0xLjQtMC44cy0xLjYtMC41LTIuOS0wLjhjLTEuNi0wLjQtMi44LTAuOC0zLjUtMS4zCgkJCQkJcy0xLjMtMS0xLjctMS42Yy0wLjQtMC42LTAuNi0xLjQtMC42LTIuM2MwLTEuMSwwLjMtMi4xLDEtMi45YzAuNi0wLjgsMS41LTEuNCwyLjUtMS44QzExMCwyLjQsMTExLjEsMi4yLDExMi4yLDIuMnoiLz4KCQkJCTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0xMjYuNCwzLjd2My45aDIuNlYxMGgtMi42djYuNGMwLDAuNiwwLjEsMSwwLjMsMS4yYzAuMiwwLjIsMC42LDAuMywxLjIsMC4zYzAuNCwwLDAuOCwwLDEuMS0wLjF2Mi44CgkJCQkJYy0wLjUsMC4xLTEuMiwwLjEtMi4xLDAuMWMtMS40LDAtMi40LTAuMi0zLTAuN2MtMC43LTAuNS0xLTEuMy0xLTIuNFY5LjloLTIuMVY3LjVoMi4xVjMuN0gxMjYuNHoiLz4KCQkJCTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0xMzcuMSw3LjJjMy44LDAsNS42LDEuMiw1LjYsMy43djYuOGMwLDEuMywwLjEsMi4yLDAuNSwyLjdoLTMuNmMtMC4xLTAuNC0wLjItMC44LTAuMi0xLjIKCQkJCQljLTEsMS4xLTIuNSwxLjYtNC4zLDEuNmMtMS4zLDAtMi40LTAuMy0zLjItMXMtMS4yLTEuNi0xLjItMi44czAuNC0yLjEsMS4xLTIuN2MwLjgtMC43LDIuMi0xLjEsNC4yLTEuMwoJCQkJCWMxLjQtMC4xLDIuMy0wLjMsMi43LTAuNmMwLjQtMC4yLDAuNi0wLjYsMC42LTFjMC0wLjYtMC4yLTEtMC41LTEuM2MtMC40LTAuMy0wLjktMC40LTEuOC0wLjRjLTAuNywwLTEuMywwLjItMS43LDAuNQoJCQkJCXMtMC42LDAuOC0wLjcsMS41SDEzMWMwLjEtMS40LDAuNy0yLjUsMS44LTMuMkMxMzMuOCw3LjYsMTM1LjMsNy4yLDEzNy4xLDcuMnogTTEzNC4xLDE2LjhjMCwxLjEsMC43LDEuNiwyLjIsMS42CgkJCQkJYzEuOSwwLDIuOS0xLDIuOS0yLjl2LTEuNGMtMC4zLDAuMy0xLDAuNS0yLjEsMC42Yy0xLDAuMS0xLjcsMC4zLTIuMiwwLjZDMTM0LjQsMTUuNywxMzQuMSwxNi4xLDEzNC4xLDE2Ljh6Ii8+CgkJCQk8cGF0aCBjbGFzcz0ic3QxIiBkPSJNMTU4LDIuNnYxNy44aC0zLjR2LTEuNmwwLDBjLTAuOCwxLjMtMi4xLDItMy45LDJjLTEuOCwwLTMuMi0wLjYtNC4yLTEuOXMtMS42LTMtMS42LTVzMC41LTMuNiwxLjYtNC44CgkJCQkJczIuNC0xLjksNC4xLTEuOWMwLjgsMCwxLjUsMC4yLDIuMiwwLjVzMS4yLDAuOCwxLjYsMS40aDAuMVYyLjZIMTU4eiBNMTQ4LjQsMTRjMCwxLjIsMC4zLDIuMiwwLjgsM2MwLjYsMC44LDEuMywxLjIsMi4zLDEuMgoJCQkJCXMxLjgtMC40LDIuMy0xLjFzMC44LTEuOCwwLjgtMy4xcy0wLjMtMi4zLTAuOC0zcy0xLjMtMS4xLTIuMy0xLjFzLTEuOCwwLjQtMi4zLDEuMUMxNDguNywxMS43LDE0OC40LDEyLjcsMTQ4LjQsMTR6Ii8+CgkJCQk8cGF0aCBjbGFzcz0ic3QxIiBkPSJNMTY1LjUsMy43djMuOWgyLjZWMTBoLTIuNnY2LjRjMCwwLjYsMC4xLDEsMC4zLDEuMnMwLjYsMC4zLDEuMiwwLjNjMC40LDAsMC44LDAsMS4xLTAuMXYyLjgKCQkJCQljLTAuNSwwLjEtMS4yLDAuMS0yLjEsMC4xYy0xLjQsMC0yLjQtMC4yLTMtMC43Yy0wLjctMC41LTEtMS4zLTEtMi40VjkuOWgtMi4xVjcuNWgyLjFWMy43SDE2NS41eiIvPgoJCQkJPHBhdGggY2xhc3M9InN0MSIgZD0iTTE5MCwyLjZ2My4xbC05LjYsMTEuNGg5Ljh2My4zaC0xNXYtMy4xbDkuNi0xMS40SDE3NlYyLjZIMTkweiIvPgoJCQkJPHBhdGggY2xhc3M9InN0MSIgZD0iTTE5NS42LDcuNXY3LjNjMCwxLDAuMiwxLjgsMC41LDIuM3MwLjksMC44LDEuOCwwLjhjMSwwLDEuNy0wLjMsMi4xLTAuOWMwLjQtMC42LDAuNi0xLjUsMC42LTIuOFY3LjVoMy41CgkJCQkJdjEyLjloLTMuNHYtMS44aC0wLjFjLTAuOSwxLjQtMi4yLDIuMS00LDIuMWMtMS43LDAtMi45LTAuNC0zLjYtMS4zYy0wLjctMC45LTEuMS0yLjItMS4xLTR2LThMMTk1LjYsNy41TDE5NS42LDcuNXoKCQkJCQkgTTE5Ny4zLDIuNnYyLjloLTMuNFYyLjZIMTk3LjN6IE0yMDIuNCwyLjZ2Mi45SDE5OVYyLjZIMjAyLjR6Ii8+CgkJCQk8cGF0aCBjbGFzcz0ic3QxIiBkPSJNMjE0LjcsNy4yYzAuMywwLDAuNiwwLDAuOCwwLjF2My4zYy0wLjQtMC4xLTAuOC0wLjEtMS4zLTAuMWMtMi4zLDAtMy41LDEuNC0zLjUsNC4xdjUuOGgtMy41VjcuNWgzLjR2Mi40CgkJCQkJbDAsMGMwLjMtMC44LDAuOS0xLjUsMS43LTJDMjEzLDcuNCwyMTMuOCw3LjIsMjE0LjcsNy4yeiIvPgoJCQkJPHBhdGggY2xhc3M9InN0MSIgZD0iTTIyMC45LDIuNnYyLjloLTMuNVYyLjZIMjIwLjl6IE0yMjAuOSw3LjV2MTIuOWgtMy41VjcuNUgyMjAuOXoiLz4KCQkJCTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0yMjkuNyw3LjJjMS44LDAsMy4yLDAuNCw0LjMsMS4zczEuNywyLjEsMS44LDMuNmgtMy41Yy0wLjItMS41LTEuMS0yLjItMi42LTIuMmMtMC45LDAtMS43LDAuNC0yLjIsMS4xCgkJCQkJYy0wLjUsMC44LTAuOCwxLjgtMC44LDNzMC4zLDIuMiwwLjgsMi45czEuMiwxLjEsMi4yLDEuMWMxLjYsMCwyLjYtMC45LDIuOC0yLjZoMy40Yy0wLjIsMS43LTAuOSwzLTIsMy45cy0yLjUsMS40LTQuMiwxLjQKCQkJCQljLTEuOSwwLTMuNS0wLjYtNC43LTEuOGMtMS4yLTEuMi0xLjgtMi44LTEuOC00LjhjMC0yLjEsMC42LTMuOCwxLjgtNS4xQzIyNi4xLDcuOCwyMjcuNyw3LjIsMjI5LjcsNy4yeiIvPgoJCQkJPHBhdGggY2xhc3M9InN0MSIgZD0iTTI0MS41LDIuNnY2LjdoMC4xYzAuNC0wLjcsMC45LTEuMiwxLjYtMS42YzAuNy0wLjQsMS40LTAuNiwyLjItMC42YzEuNiwwLDIuOCwwLjQsMy42LDEuMgoJCQkJCWMwLjcsMC44LDEuMSwyLjEsMS4xLDMuOXY4LjFoLTMuNVYxM2MwLTEtMC4yLTEuOC0wLjUtMi4zcy0wLjktMC44LTEuOC0wLjhjLTEsMC0xLjYsMC4zLTIuMSwwLjljLTAuNCwwLjYtMC43LDEuNS0wLjcsMi44djYuOAoJCQkJCUgyMzhWMi42QzIzNy45LDIuNiwyNDEuNSwyLjYsMjQxLjUsMi42eiIvPgoJCQk8L2c+CgkJPC9nPgoJPC9nPgo8L2c+Cjwvc3ZnPgo=" alt="Stadt Zürich">
+      <span class="stzh-label">Weihnachtsmarkt</span>
+    </div>
+    <div class="lang-bar" style="padding-top:8px;">
+      <button class="lang-btn" onclick="toggleLangPicker(event)">
+        <svg viewBox="0 0 12 12" fill="none" width="12" height="12"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 1c-1.5 1.5-2 3-2 5s.5 3.5 2 5M6 1c1.5 1.5 2 3 2 5s-.5 3.5-2 5M1 6h10" stroke="currentColor" stroke-width="1.1"/></svg>
+        <span id="langLabel">DE</span>
+      </button>
+    </div>
+    <div class="screen-body" style="padding-top:8px; justify-content:center;">
+      <div style="text-align:center; margin-bottom:20px;">
+        <div style="font-size:28px; margin-bottom:6px;">🎄</div>
+        <div class="s1-head" id="s1head">Etwas ist nicht in Ordnung?</div>
+        <p style="font-size:13px;color:var(--text-2);line-height:1.55;text-align:center;margin-top:6px;margin-bottom:0;" id="s1sub">Anonym melden, was Sie gesehen haben.<br>Keine persönlichen Daten. Vollständig vertraulich.</p>
+      </div>
+      <button class="btn-p" onclick="goTo('type')" style="margin-bottom:12px;" id="s1btn">Meldung erstellen</button>
+      <div class="trust-row">
+        <span id="i-t1">Unter 2 Min.</span><span class="trust-dot"></span>
+        <span id="i-t2">Anonym</span><span class="trust-dot"></span>
+        <span id="i-t3">Schweizer Datenschutz</span>
+      </div>
+      <a href="tel:117" id="i-call117" class="call117-link" style="margin-top:16px;">Sofortige Hilfe? Direkt 117 anrufen.</a>
+    </div>
+  </div>
+
+  <!-- S_TYPE: REPORT TYPE -->
+  <div class="screen rtype-screen" id="s_type">
+    <div class="nav-bar"><button class="back-btn" onclick="goBack(1)"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> <span id="i-back-type">Zurück</span></button></div>
+    <div class="rtype-header">
+      <div class="rtype-head" id="i-rtype-head">Was möchten Sie melden?</div>
+      <div class="rtype-sub" id="i-rtype-sub">Bitte wählen Sie die Art Ihrer Beobachtung.</div>
+    </div>
+    <div class="rtype-cards">
+      <div class="rtype-card green" onclick="goTo(2)">
+        <div class="rtype-icon green"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="6.5" r="3.8" stroke="#1E7A4A" stroke-width="1.5"/><path d="M4 19c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="#1E7A4A" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="rtype-body">
+          <div class="rtype-title green" id="i-rtype-person-title">Sorge um eine Person</div>
+          <div class="rtype-desc green" id="i-rtype-person-desc">Belästigung, Übergriff, Not, Trunkenheit, Kind ohne Aufsicht</div>
+        </div>
+        <div style="color:var(--green-600);"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+      <div class="rtype-card amber" onclick="goTo('item1')">
+        <div class="rtype-icon amber"><svg viewBox="0 0 22 22" fill="none"><rect x="3" y="9" width="16" height="11" rx="2" stroke="#B8760A" stroke-width="1.5"/><path d="M8 9V7a3 3 0 016 0v2" stroke="#B8760A" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="rtype-body">
+          <div class="rtype-title amber" id="i-rtype-item-title">Herrenloses Gepäck oder Gegenstand</div>
+          <div class="rtype-desc amber" id="i-rtype-item-desc">Verdächtiger oder herrenloser Gegenstand auf dem Platz</div>
+        </div>
+        <div style="color:var(--amber-600);"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S2: INCIDENT CATEGORY -->
+  <div class="screen" id="s2">
+    <div class="nav-bar"><button class="back-btn" onclick="goBack('type')"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> <span id="i-back-s2">Zurück</span></button></div>
+    <div class="progress"><div class="dot done"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="screen-body" style="padding-top:10px;">
+      <div class="heading" style="margin-bottom:4px;" id="i-obs-q">Was haben Sie beobachtet?</div>
+      <p class="hint" style="margin-bottom:0;" id="i-obs-hint">Alles Zutreffende auswählen</p>
+      <div class="card-grid" id="cardGrid">
+        <div class="obs-card" data-tier="2" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="5.5" r="3" stroke="#1E7A4A" stroke-width="1.4"/><path d="M5 17c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M14 9l2-1M14 11l2 1" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs1">Sexuelle Belästigung</span>
+        </div>
+        <div class="obs-card" data-tier="3" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="5" r="2.8" stroke="#1E7A4A" stroke-width="1.4"/><circle cx="14" cy="5" r="2.8" stroke="#1E7A4A" stroke-width="1.4"/><path d="M3 16c0-2.2 1.8-4 4-4" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M17 16c0-2.2-1.8-4-4-4" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M10 10v2M10 14h.01" stroke="#1E7A4A" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs2">Übergriff / Bedrohung</span>
+        </div>
+        <div class="obs-card" data-tier="1" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="3.5" stroke="#1E7A4A" stroke-width="1.4"/><path d="M4.5 17c0-3.04 2.46-5.5 5.5-5.5s5.5 2.46 5.5 5.5" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M7 10l1 1.5M13 10l-1 1.5" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs3">Betrunkene Person</span>
+        </div>
+        <div class="obs-card" data-tier="2" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><path d="M7 3h6l-1 7H8L7 3z" stroke="#1E7A4A" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 10c0 2.21 1.79 4 2 7H10c.21-3 2-4.79 2-7" stroke="#1E7A4A" stroke-width="1.3" stroke-linecap="round"/><path d="M13 5l2-1.5" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><circle cx="15.5" cy="3" r="1.2" stroke="#1E7A4A" stroke-width="1.2"/></svg></div>
+          <span class="lbl" id="i-obs4">Getränk manipuliert</span>
+        </div>
+        <div class="obs-card" data-tier="2" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="5" r="2.5" stroke="#1E7A4A" stroke-width="1.4"/><path d="M6.5 15c0-1.93 1.57-3.5 3.5-3.5s3.5 1.57 3.5 3.5" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M5 17h10" stroke="#1E7A4A" stroke-width="1.3" stroke-linecap="round"/><circle cx="15" cy="9" r="2" stroke="#1E7A4A" stroke-width="1.2"/><path d="M15 8v1.5l1 .5" stroke="#1E7A4A" stroke-width="1.1" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs5">Kind ohne Aufsicht</span>
+        </div>
+        <div class="obs-card" data-tier="3" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="7" width="14" height="10" rx="2" stroke="#1E7A4A" stroke-width="1.4"/><path d="M10 9.5v5M7.5 12h5" stroke="#1E7A4A" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs6">Medizinischer Notfall</span>
+        </div>
+        <div class="obs-card" data-tier="1" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="3.5" stroke="#1E7A4A" stroke-width="1.4"/><path d="M4.5 17c0-3.04 2.46-5.5 5.5-5.5s5.5 2.46 5.5 5.5" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M8 9.5c0 0 .5 1 2 1s2-1 2-1" stroke="#1E7A4A" stroke-width="1.3" stroke-linecap="round"/><path d="M10 13v1.5" stroke="#1E7A4A" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs7">Person in Not</span>
+        </div>
+        <div class="obs-card" data-tier="2" onclick="toggleCard(this)">
+          <div class="icw"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/><path d="M4 10c0 3.31 2.69 6 6 6" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 1.5"/><path d="M16 10v6" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 1.5"/><path d="M9 7l1 2M11 7l-1 2" stroke="#1E7A4A" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <span class="lbl" id="i-obs8">Verdächtiges Verhalten</span>
+        </div>
+      </div>
+      <div class="tier-badge" id="tierBadge">Bitte oben auswählen</div>
+      <div class="tier3-prompt" id="tier3Prompt">
+        <p id="i-tier3-msg">Das klingt dringend — 117 anrufen für schnellere Hilfe.</p>
+        <a href="tel:117" id="i-tier3-call">117 anrufen</a>
+      </div>
+      <button class="btn-p" id="contBtn" onclick="goTo(3)" disabled style="margin-top:6px;">Weiter</button>
+    </div>
+  </div>
+
+  <!-- S3: LOCATION & TIME -->
+  <div class="screen" id="s3">
+    <div class="nav-bar"><button class="back-btn" onclick="goBack(2)"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> <span id="i-back-s3">Zurück</span></button></div>
+    <div class="progress"><div class="dot done"></div><div class="dot done"></div><div class="dot active"></div><div class="dot"></div></div>
+    <div class="screen-body" style="padding-top:10px;">
+      <div class="heading" style="margin-bottom:12px;" id="i-where">Wo passiert das?</div>
+      <div class="loc-card" id="autoCard">
+        <div class="loc-dot"></div>
+        <div><div class="loc-name" id="locName">Baumring – Nord</div><div class="loc-sub" id="locSub">Via QR erkannt · Weihnachtsmarkt ZH 2025</div></div>
+        <div class="auto-badge">AUTO</div>
+      </div>
+      <button class="ov-link" id="ovLink" onclick="toggleOv()">Anderer Ort? Zone wechseln</button>
+      <div class="ov-panel" id="ovPanel">
+        <div class="zone-tabs" id="zoneTabs"></div>
+        <div class="zone-info-strip" id="zoneInfo"></div>
+        <div class="gate-grid" id="gateGrid"></div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;font-weight:600;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px;" id="i-when">Wann?</div>
+      <div class="time-row">
+        <button class="time-btn sel" id="tNow" onclick="selTime('now')">Jetzt gerade</button>
+        <button class="time-btn" id="tEarly" onclick="selTime('early')">Früher heute</button>
+      </div>
+      <div class="tier-info" id="tierInfo"></div>
+      <button class="btn-p" onclick="goTo(4)" style="margin-top:auto;">Weiter</button>
+    </div>
+  </div>
+
+  <!-- S4: DETAILS -->
+  <div class="screen" id="s4info">
+    <div class="nav-bar"><button class="back-btn" onclick="goBack(3)"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> <span id="i-back-s4">Zurück</span></button></div>
+    <div class="progress"><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot active"></div></div>
+    <div class="screen-body" style="padding-top:10px;">
+      <div class="heading" style="margin-bottom:6px;" id="i-details-head">Kurze Beschreibung</div>
+      <p class="hint" style="margin-bottom:14px;" id="i-details-hint">Kleidung, Richtung, alles Nützliche für den Sicherheitsdienst.</p>
+      <textarea class="opt-inp ta" id="ta-notes" rows="5" placeholder="z.B. Rote Jacke, Nähe Glühweinstand, Richtung Seequai…" oninput="checkDescRequired()"></textarea>
+      <div class="opt-group" style="margin-top:10px;">
+        <div class="opt-lbl" id="i-contact-lbl">Darf man Sie kontaktieren? <span class="opt-tag">Optional</span></div>
+        <div class="opt-hint" id="i-contact-hint">Nur bei Rückfragen. Wird nicht weitergegeben.</div>
+        <input class="opt-inp" type="tel" placeholder="+41 …" id="ta-contact" style="margin-top:5px;">
+      </div>
+      <button class="btn-p" id="i-send-btn" onclick="goTo(5)" disabled style="margin-top:auto;opacity:.4;pointer-events:none;">Meldung senden</button>
+    </div>
+  </div>
+
+  <!-- S5: CONFIRMATION -->
+  <div class="screen" id="s4done">
+    <div class="screen-body" style="padding-top:28px;">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:16px;">
+        <div class="chk-ring"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14l6.5 6.5L23 7" stroke="#1E7A4A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="s4-head" id="i-done-head">Meldung an den Sicherheitsdienst gesendet.</div>
+        <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:14px;" id="i-done-sub">Ihre Beobachtung wird geprüft.<br>Keine persönlichen Daten gespeichert.</p>
+      </div>
+      <div class="info-box green" id="i-done-info">
+        SIGNA · Sicherheitsdienst Weihnachtsmarkt<br>
+        Lokal gespeichert · Schweizer Datenschutz<br>
+        Persönliche Informationen &amp; Metadaten<br>werden innerhalb von 12 Stunden gelöscht
+      </div>
+      <div class="alert-strip" style="margin-top:12px;">
+        <div class="alert-dot"></div>
+        <div class="alert-text" id="i-done-alert"><strong>Falls die Situation eskaliert</strong>, rufen Sie sofort 117 an oder wenden Sie sich an einen Sicherheitsmitarbeiter.</div>
+      </div>
+      <button class="btn-p" onclick="resetApp()" style="margin-top:14px;">Fertig</button>
+    </div>
+  </div>
+
+  <!-- SITEM1: ITEM TYPE -->
+  <div class="screen" id="sitem1">
+    <div class="nav-bar"><button class="back-btn amber" onclick="goBack('type')"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Zurück</button></div>
+    <div class="progress"><div class="dot active am"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="item-flow-hdr"><div class="item-flow-title" id="i-item-title">Herrenloses Objekt</div><div class="item-flow-sub" id="i-item-sub">Meldung direkt an Sicherheitsdienst</div></div>
+    <div class="screen-body" style="padding-top:16px;">
+      <div class="heading" style="font-size:17px;margin-bottom:4px;" id="i-item-q">Was haben Sie gesehen?</div>
+      <p class="hint" style="margin-bottom:14px;" id="i-item-hint">Bitte auswählen</p>
+      <div class="item-type-grid" id="itemTypeGrid">
+        <button class="item-type-btn" onclick="selItemType(this)"><div class="bt-ic"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="8" width="14" height="10" rx="2" stroke="#B8760A" stroke-width="1.4"/><path d="M7 8V6a3 3 0 016 0v2" stroke="#B8760A" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="bt-lbl" id="i-item-t1">Koffer / Tasche</span></button>
+        <button class="item-type-btn" onclick="selItemType(this)"><div class="bt-ic"><svg viewBox="0 0 20 20" fill="none"><rect x="5" y="6" width="10" height="12" rx="1.5" stroke="#B8760A" stroke-width="1.4"/><path d="M8 6V5a2 2 0 014 0v1" stroke="#B8760A" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="bt-lbl" id="i-item-t2">Paket / Karton</span></button>
+        <button class="item-type-btn" onclick="selItemType(this)"><div class="bt-ic"><svg viewBox="0 0 20 20" fill="none"><ellipse cx="10" cy="12" rx="6" ry="4" stroke="#B8760A" stroke-width="1.4"/><path d="M4 10V8a6 3.5 0 0112 0v2" stroke="#B8760A" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="bt-lbl" id="i-item-t3">Rucksack</span></button>
+        <button class="item-type-btn" onclick="selItemType(this)"><div class="bt-ic"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="11" r="5" stroke="#B8760A" stroke-width="1.4"/><path d="M10 6V4M10 18v-2M4 11H2M18 11h-2" stroke="#B8760A" stroke-width="1.4" stroke-linecap="round"/></svg></div><span class="bt-lbl" id="i-item-t4">Anderer Gegenstand</span></button>
+      </div>
+      <button class="btn-p am" id="itemContBtn" onclick="goTo('item2')" disabled style="margin-top:auto;">Weiter</button>
+    </div>
+  </div>
+
+  <!-- SITEM2: LOCATION -->
+  <div class="screen" id="sitem2">
+    <div class="nav-bar"><button class="back-btn amber" onclick="goBack('item1')"><svg viewBox="0 0 14 14" fill="none" width="14" height="14"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Zurück</button></div>
+    <div class="progress"><div class="dot done am"></div><div class="dot active am"></div><div class="dot"></div></div>
+    <div class="item-flow-hdr"><div class="item-flow-title">Herrenloses Objekt</div><div class="item-flow-sub">Meldung direkt an Sicherheitsdienst</div></div>
+    <div class="screen-body" style="padding-top:16px;">
+      <div class="heading" style="font-size:17px;margin-bottom:12px;" id="i-item-where">Wo befindet sich das Objekt?</div>
+      <div class="item-loc-card" id="itemAutoCard">
+        <div class="item-loc-dot"></div>
+        <div><div class="item-loc-name" id="itemLocName">Baumring – Nord</div><div class="item-loc-sub">Via QR erkannt · Weihnachtsmarkt ZH 2025</div></div>
+        <div class="item-auto-badge">AUTO</div>
+      </div>
+      <button class="ov-link" id="itemOvLink" onclick="toggleItemOv()">Anderer Ort? Zone wechseln</button>
+      <div class="ov-panel" id="itemOvPanel">
+        <div class="zone-sel-grid" id="itemZoneGrid"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="alert-strip"><div class="alert-dot"></div><div class="alert-text"><strong>Bitte nicht anfassen oder bewegen.</strong> Entfernen Sie sich und warten Sie auf den Sicherheitsdienst.</div></div>
+      <button class="btn-p am" onclick="goTo('item3')" style="margin-top:14px;">Meldung absenden</button>
+    </div>
+  </div>
+
+  <!-- SITEM3: CONFIRMATION -->
+  <div class="screen" id="sitem3">
+    <div class="screen-body" style="padding-top:28px;">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:16px;">
+        <div class="chk-ring" style="background:var(--amber-50)"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14l6.5 6.5L23 7" stroke="#B8760A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="s4-head">Sicherheitsdienst alarmiert.</div>
+        <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:14px;">Ihr Standort wurde weitergeleitet.<br>Keine persönlichen Daten gespeichert.</p>
+      </div>
+      <div class="info-box amber">
+        Direktalarm · Sicherheitsdienst Weihnachtsmarkt<br>
+        Lokal gespeichert · Schweizer Datenschutz
+      </div>
+      <div class="alert-strip" style="margin-top:12px;"><div class="alert-dot"></div><div class="alert-text"><strong>Halten Sie Abstand zum Objekt</strong>, bis der Sicherheitsdienst eintrifft. Rufen Sie 117, falls sich die Lage verändert.</div></div>
+      <button class="btn-p am" onclick="resetApp()" style="margin-top:14px;">Fertig</button>
+    </div>
+  </div>
+
+  </div><!-- /screens -->
+</div><!-- /device -->
+<div class="device-label" id="devLabel">Screen 1 — Startseite</div>
+</div>
+
+<!-- NODE DB PANEL -->
+<div class="db-panel">
+  <h2>Weihnachtsmarkt Sechseläutenplatz · QR Node Database · <span style="color:#5b9bd5" id="dbTotal"></span></h2>
+  <div class="db-zones" id="dbZones"></div>
+  <div class="stat-row" id="dbStats"></div>
+</div>
+
+<script>
+const NODES = [
+  { zone:"Baumring", code:"TREE", desc:"Standreihen rund um den Weihnachtsbaum — dichteste Besucherzone", nodes:[
+    {id:"TREE-N",  name:"Baumring – Nord",    qr:"XMAS-SIGNA-TREE-N"},
+    {id:"TREE-S",  name:"Baumring – Süd",     qr:"XMAS-SIGNA-TREE-S"},
+    {id:"TREE-E",  name:"Baumring – Ost",     qr:"XMAS-SIGNA-TREE-E"},
+    {id:"TREE-W",  name:"Baumring – West",    qr:"XMAS-SIGNA-TREE-W"},
+  ]},
+  { zone:"Opernhaus-Seite", code:"OPR", desc:"Standreihen entlang der Opernhausfassade", nodes:[
+    {id:"OPR-L",   name:"Opernhaus – Links",  qr:"XMAS-SIGNA-OPR-L"},
+    {id:"OPR-M",   name:"Opernhaus – Mitte",  qr:"XMAS-SIGNA-OPR-M"},
+    {id:"OPR-R",   name:"Opernhaus – Rechts", qr:"XMAS-SIGNA-OPR-R"},
+  ]},
+  { zone:"Bellevue-Eingang", code:"BEL", desc:"Hauptzugang von Bellevueplatz / Tram-Haltestelle", nodes:[
+    {id:"BEL-A",   name:"Bellevue – Eingang A", qr:"XMAS-SIGNA-BEL-A"},
+    {id:"BEL-B",   name:"Bellevue – Eingang B", qr:"XMAS-SIGNA-BEL-B"},
+  ]},
+  { zone:"Utoquai-Eingang", code:"UTO", desc:"Zugang von der Utoquai-Seite / Seeseite", nodes:[
+    {id:"UTO-A",   name:"Utoquai – Eingang A", qr:"XMAS-SIGNA-UTO-A"},
+    {id:"UTO-B",   name:"Utoquai – Eingang B", qr:"XMAS-SIGNA-UTO-B"},
+  ]},
+  { zone:"Karusell / Nord", code:"KAR", desc:"Fahrgeschäfte und Nördliche Standreihen", nodes:[
+    {id:"KAR-A",   name:"Karusell – Zone A",  qr:"XMAS-SIGNA-KAR-A"},
+    {id:"KAR-B",   name:"Karusell – Zone B",  qr:"XMAS-SIGNA-KAR-B"},
+    {id:"KAR-C",   name:"Nord – Zone C",      qr:"XMAS-SIGNA-KAR-C"},
+  ]},
+  { zone:"Seeseite", code:"SEE", desc:"Standreihen entlang Utoquai / Seeuferseite", nodes:[
+    {id:"SEE-N",   name:"Seeseite – Nord",    qr:"XMAS-SIGNA-SEE-N"},
+    {id:"SEE-S",   name:"Seeseite – Süd",     qr:"XMAS-SIGNA-SEE-S"},
+  ]},
+  { zone:"Glühwein & Food", code:"FOOD", desc:"Hauptverpflegungsbereich und Glühweinstände", nodes:[
+    {id:"FOOD-A",  name:"Glühwein – Stand A", qr:"XMAS-SIGNA-FOOD-A"},
+    {id:"FOOD-B",  name:"Glühwein – Stand B", qr:"XMAS-SIGNA-FOOD-B"},
+    {id:"FOOD-C",  name:"Food – Mitte",       qr:"XMAS-SIGNA-FOOD-C"},
+  ]},
+  { zone:"Info-Punkt", code:"INFO", desc:"Zentraler Informationsstand des Veranstalters", nodes:[
+    {id:"INFO-M",  name:"Info-Punkt – Mitte", qr:"XMAS-SIGNA-INFO-M"},
+  ]},
+];
+
+const ROUTE = {
+  1:'s1','type':'s_type',2:'s2',3:'s3',4:'s4info',5:'s4done',
+  'item1':'sitem1','item2':'sitem2','item3':'sitem3'
+};
+
+let step=1, ovOpen=false, itemOvOpen=false, zoneIdx=0, nodeId=null;
+
+function tick(){
+  const n=new Date(),h=String(n.getHours()).padStart(2,'0'),m=String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('clk').textContent=h+':'+m;
+}
+tick(); setInterval(tick,10000);
+
+function getScreenId(s){ return ROUTE[s]||s; }
+function currentScreenEl(){ return document.querySelector('.screen.active'); }
+
+function goTo(toStep,isBack=false){
+  const fromEl=currentScreenEl();
+  const toId=getScreenId(toStep);
+  const toEl=document.getElementById(toId);
+  if(!fromEl||!toEl||fromEl===toEl) return;
+  if(isBack){
+    fromEl.classList.remove('active'); fromEl.classList.add('back-exit');
+    toEl.style.transform='translateX(-100%)'; toEl.classList.remove('back-exit','exit');
+    requestAnimationFrame(()=>{ toEl.classList.add('active'); toEl.style.transform=''; });
+    setTimeout(()=>fromEl.classList.remove('back-exit'),340);
+  } else {
+    fromEl.classList.remove('active'); fromEl.classList.add('exit');
+    toEl.style.transform='translateX(100%)'; toEl.classList.remove('back-exit','exit');
+    requestAnimationFrame(()=>{ toEl.classList.add('active'); toEl.style.transform=''; });
+    setTimeout(()=>fromEl.classList.remove('exit'),340);
+  }
+  step=toStep; updateLabel();
+  if(toStep===3) updTierInfo();
+}
+function goBack(toStep){ goTo(toStep,true); }
+
+function updateLabel(){
+  const lbl={1:'Screen 1 — Startseite','type':'Screen — Meldetyp',2:'Screen 2 — Vorfall',3:'Screen 3 — Ort & Zeit',4:'Screen 4 — Beschreibung',5:'Screen 5 — Bestätigung','item1':'Objekt — Typ','item2':'Objekt — Ort','item3':'Objekt — Bestätigung'};
+  document.getElementById('devLabel').textContent=lbl[step]||'';
+}
+
+function resetApp(){
+  Object.values(ROUTE).forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.classList.remove('active','exit','back-exit'); el.style.transform='translateX(100%)';
+  });
+  const s1=document.getElementById('s1'); s1.style.transform='translateX(0)'; s1.classList.add('active');
+  document.querySelectorAll('.obs-card').forEach(c=>c.classList.remove('sel'));
+  document.querySelectorAll('.item-type-btn').forEach(b=>b.classList.remove('sel'));
+  const icb=document.getElementById('itemContBtn'); if(icb) icb.disabled=true;
+  updateTierBadge(); closeOv(); closeItemOv(); selTime('now'); step=1; updateLabel();
+  const ta=document.getElementById('ta-notes'); if(ta) ta.value='';
+  const sb=document.getElementById('i-send-btn'); if(sb){sb.disabled=true;sb.style.opacity='.4';sb.style.pointerEvents='none';}
+}
+
+function toggleCard(el){ el.classList.toggle('sel'); updateTierBadge(); }
+function nSel(){ return document.querySelectorAll('#cardGrid .obs-card.sel').length; }
+function mxTier(){ let t=0; document.querySelectorAll('#cardGrid .obs-card.sel').forEach(c=>t=Math.max(t,+c.dataset.tier||1)); return t; }
+function calcTier(n){ return n>=3?3:mxTier()>=3?3:mxTier()>=2?2:1; }
+
+function updateTierBadge(){
+  const n=nSel(), badge=document.getElementById('tierBadge'), btn=document.getElementById('contBtn');
+  const prompt=document.getElementById('tier3Prompt');
+  if(!n){ badge.textContent='Bitte oben auswählen'; badge.style.cssText=''; btn.disabled=true; if(prompt) prompt.classList.remove('show'); return; }
+  const t=calcTier(n);
+  const msgs=['','Protokolliert','Triage-Warteschlange','Priorität — Sofortprüfung'];
+  const colors=['','#E8F5EE','#fef3c7','#fee2e2'];
+  const bords=['','#C3E5D0','#fbbf24','#fca5a5'];
+  const txts=['','#0F4F2E','#92400e','#991b1b'];
+  badge.textContent=n+' '+(n===1?'Kategorie':'Kategorien')+' · Tier '+t+' — '+msgs[t];
+  badge.style.background=colors[t]; badge.style.borderColor=bords[t]; badge.style.color=txts[t];
+  if(prompt) prompt.classList.toggle('show',t===3);
+  btn.disabled=false;
+}
+
+function updTierInfo(){
+  const n=nSel(), el=document.getElementById('tierInfo');
+  if(!el) return;
+  if(!n){el.textContent='';return;}
+  const msgs=['','Tier 1 — protokolliert','Tier 2 — Triage-Warteschlange','Tier 3 — Prioritätsprüfung / PRIORITÄT'];
+  el.textContent=n+' '+(n===1?'Kategorie':'Kategorien')+' · '+msgs[calcTier(n)];
+}
+
+function toggleOv(){
+  ovOpen=!ovOpen;
+  const panel=document.getElementById('ovPanel'),card=document.getElementById('autoCard'),btn=document.getElementById('ovLink');
+  if(ovOpen){ panel.classList.add('open'); card.style.display='none'; btn.textContent='← Erkannten Ort verwenden'; renderTabs(); renderZoneNodes(0); }
+  else closeOv();
+}
+function closeOv(){
+  ovOpen=false;
+  const p=document.getElementById('ovPanel'),c=document.getElementById('autoCard'),b=document.getElementById('ovLink');
+  if(p) p.classList.remove('open'); if(c) c.style.display='flex'; if(b) b.textContent='Anderer Ort? Zone wechseln';
+}
+function renderTabs(){
+  document.getElementById('zoneTabs').innerHTML=NODES.map((z,i)=>
+    `<div class="zone-tab ${i===zoneIdx?'active':''}" onclick="selZone(${i})">${z.code}</div>`).join('');
+}
+function selZone(i){ zoneIdx=i; nodeId=null; renderTabs(); renderZoneNodes(i); }
+function renderZoneNodes(i){
+  const z=NODES[i];
+  document.getElementById('zoneInfo').textContent=z.desc;
+  document.getElementById('gateGrid').innerHTML=z.nodes.map(n=>
+    `<div class="gate-btn ${nodeId===n.id?'sel':''}" onclick="selNode('${n.id}','${n.name}')">${n.name.replace(/ – .+/,'').substring(0,12)}</div>`).join('');
+}
+function selNode(id,name){ nodeId=id; renderZoneNodes(zoneIdx); document.getElementById('locName').textContent=name; closeOv(); }
+function selTime(t){
+  document.getElementById('tNow').classList.toggle('sel',t==='now');
+  document.getElementById('tEarly').classList.toggle('sel',t==='early');
+}
+
+function toggleItemOv(){
+  itemOvOpen=!itemOvOpen;
+  document.getElementById('itemOvPanel').classList.toggle('open',itemOvOpen);
+  document.getElementById('itemAutoCard').style.display=itemOvOpen?'none':'flex';
+  document.getElementById('itemOvLink').textContent=itemOvOpen?'← Erkannten Ort verwenden':'Anderer Ort? Zone wechseln';
+  if(itemOvOpen) renderItemZones();
+}
+function closeItemOv(){
+  itemOvOpen=false;
+  const p=document.getElementById('itemOvPanel'),c=document.getElementById('itemAutoCard'),b=document.getElementById('itemOvLink');
+  if(p) p.classList.remove('open'); if(c) c.style.display='flex'; if(b) b.textContent='Anderer Ort? Zone wechseln';
+}
+function renderItemZones(){
+  document.getElementById('itemZoneGrid').innerHTML=NODES.map((z,i)=>
+    `<div class="zone-sel-btn" onclick="selItemZone(this,'${z.zone}')">${z.zone}</div>`).join('');
+}
+function selItemZone(el,name){
+  document.querySelectorAll('#itemZoneGrid .zone-sel-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel'); document.getElementById('itemLocName').textContent=name;
+  setTimeout(closeItemOv,400);
+}
+function selItemType(el){
+  document.querySelectorAll('#itemTypeGrid .item-type-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  const btn=document.getElementById('itemContBtn'); if(btn) btn.disabled=false;
+}
+function checkDescRequired(){
+  const ta=document.getElementById('ta-notes');
+  const btn=document.getElementById('i-send-btn');
+  const ok=ta&&ta.value.trim().length>=10;
+  btn.disabled=!ok; btn.style.opacity=ok?'1':'.4'; btn.style.pointerEvents=ok?'auto':'none';
+}
+
+function toggleLangPicker(e){ e.stopPropagation(); document.getElementById('langPicker').classList.toggle('open'); }
+function closeLangPicker(){ document.getElementById('langPicker').classList.remove('open'); }
+document.addEventListener('click',closeLangPicker);
+
+const LANG_STRINGS = {
+  de:{
+    s1head:'Etwas ist nicht in Ordnung?',
+    s1sub:'Anonym melden, was Sie gesehen haben.<br>Keine persönlichen Daten. Vollständig vertraulich.',
+    s1btn:'Meldung erstellen', t1:'Unter 2 Min.', t2:'Anonym', t3:'Schweizer Datenschutz',
+    call117:'Sofortige Hilfe? Direkt 117 anrufen.',
+    rtype_head:'Was möchten Sie melden?', rtype_sub:'Bitte wählen Sie die Art Ihrer Beobachtung.',
+    rtype_person_title:'Sorge um eine Person',
+    rtype_person_desc:'Belästigung, Übergriff, Not, Trunkenheit, Kind ohne Aufsicht',
+    rtype_item_title:'Herrenloses Gepäck oder Gegenstand',
+    rtype_item_desc:'Verdächtiger oder herrenloser Gegenstand auf dem Platz',
+    obs_q:'Was haben Sie beobachtet?', obs_hint:'Alles Zutreffende auswählen',
+    obs1:'Sexuelle Belästigung', obs2:'Übergriff / Bedrohung', obs3:'Betrunkene Person',
+    obs4:'Getränk manipuliert', obs5:'Kind ohne Aufsicht', obs6:'Medizinischer Notfall',
+    obs7:'Person in Not', obs8:'Verdächtiges Verhalten',
+    where:'Wo passiert das?', when:'Wann?', now:'Jetzt gerade', earlier:'Früher heute',
+    details_head:'Kurze Beschreibung',
+    details_hint:'Kleidung, Richtung, alles Nützliche für den Sicherheitsdienst.',
+    ta_placeholder:'z.B. Rote Jacke, Nähe Glühweinstand, Richtung Seequai…',
+    contact_lbl:'Darf man Sie kontaktieren?', contact_hint:'Nur bei Rückfragen. Wird nicht weitergegeben.',
+    send:'Meldung senden',
+    done_head:'Meldung an den Sicherheitsdienst gesendet.',
+    done_sub:'Ihre Beobachtung wird geprüft.<br>Keine persönlichen Daten gespeichert.',
+    done_alert:'<strong>Falls die Situation eskaliert</strong>, rufen Sie sofort 117 an oder wenden Sie sich an einen Sicherheitsmitarbeiter.',
+    item_title:'Herrenloses Objekt', item_sub:'Meldung direkt an Sicherheitsdienst',
+    item_q:'Was haben Sie gesehen?', item_hint:'Bitte auswählen',
+    item_t1:'Koffer / Tasche', item_t2:'Paket / Karton', item_t3:'Rucksack', item_t4:'Anderer Gegenstand',
+    item_where:'Wo befindet sich das Objekt?',
+    tier3_msg:'Das klingt dringend — 117 anrufen für schnellere Hilfe.', tier3_call:'117 anrufen',
+    lang:'DE', badge_sub:'Weihnachtsmarkt',
+  },
+  en:{
+    s1head:'Something seems wrong?',
+    s1sub:'Report what you saw — quickly and anonymously.<br>No personal data. Strictly confidential.',
+    s1btn:'Start report', t1:'Under 2 min', t2:'Anonymous', t3:'Swiss privacy',
+    call117:'Need immediate help? Call 117.',
+    rtype_head:'What are you reporting?', rtype_sub:'Select the type of situation you observed.',
+    rtype_person_title:'Concern about a person',
+    rtype_person_desc:'Harassment, assault, distress, intoxication, unattended child',
+    rtype_item_title:'Unattended bag or item',
+    rtype_item_desc:'Suspicious or unclaimed object at the market',
+    obs_q:'What did you witness?', obs_hint:'Select all that apply',
+    obs1:'Sexual harassment', obs2:'Assault / threatening', obs3:'Intoxicated person',
+    obs4:'Drink spiking', obs5:'Unattended child', obs6:'Medical emergency',
+    obs7:'Person in distress', obs8:'Suspicious behaviour',
+    where:'Where is this happening?', when:'When?', now:'Right now', earlier:'Earlier today',
+    details_head:'A bit more detail',
+    details_hint:'Clothing, direction, anything useful for security.',
+    ta_placeholder:'e.g. Red jacket, near Glühwein stand, heading toward the lake…',
+    contact_lbl:'Contact you?', contact_hint:'Only if follow-up needed. Never shared.',
+    send:'Send report',
+    done_head:'Report sent to the security team.',
+    done_sub:'Your observation is being reviewed.<br>No personal data was collected.',
+    done_alert:'<strong>If the situation escalates</strong>, call 117 immediately or find a security steward.',
+    item_title:'Unattended item', item_sub:'Report forwarded directly to security',
+    item_q:'What did you see?', item_hint:'Select one',
+    item_t1:'Bag / luggage', item_t2:'Box / package', item_t3:'Backpack', item_t4:'Other object',
+    item_where:'Where is it?',
+    tier3_msg:'This sounds urgent — call 117 directly for a faster response.', tier3_call:'Call 117',
+    lang:'EN', badge_sub:'Christmas Market',
+  },
+  fr:{
+    s1head:'Quelque chose ne va pas ?',
+    s1sub:'Signalez ce que vous avez vu — rapidement et anonymement.<br>Aucune donnée personnelle. Strictement confidentiel.',
+    s1btn:'Faire un signalement', t1:'Moins de 2 min', t2:'Anonyme', t3:'Confidentialité suisse',
+    call117:'Aide immédiate ? Appelez le 117.',
+    rtype_head:'Que souhaitez-vous signaler ?', rtype_sub:'Sélectionnez le type de situation observée.',
+    rtype_person_title:'Inquiétude pour une personne',
+    rtype_person_desc:'Harcèlement, agression, détresse, ivresse, enfant non accompagné',
+    rtype_item_title:'Bagage ou objet sans surveillance',
+    rtype_item_desc:'Objet suspect ou abandonné sur le marché',
+    obs_q:"Qu'avez-vous observé ?", obs_hint:"Sélectionnez tout ce qui s'applique",
+    obs1:'Harcèlement sexuel', obs2:'Agression / menace', obs3:'Personne ivre',
+    obs4:'Boisson piégée', obs5:'Enfant sans surveillance', obs6:'Urgence médicale',
+    obs7:'Personne en détresse', obs8:'Comportement suspect',
+    where:'Où cela se passe-t-il ?', when:'Quand ?', now:'Maintenant', earlier:"Plus tôt aujourd'hui",
+    details_head:'Un peu plus de détails',
+    details_hint:'Vêtements, direction, tout ce qui peut aider la sécurité.',
+    ta_placeholder:"ex. Veste rouge, près du stand de vin chaud, vers le lac…",
+    contact_lbl:'Vous contacter ?', contact_hint:'Uniquement si suivi nécessaire. Jamais partagé.',
+    send:'Envoyer le signalement',
+    done_head:'Signalement envoyé à la sécurité.',
+    done_sub:"Votre observation est en cours d'examen.<br>Aucune donnée personnelle collectée.",
+    done_alert:"<strong>Si la situation s'aggrave</strong>, appelez le 117 immédiatement.",
+    item_title:'Objet sans surveillance', item_sub:'Signalement transmis directement à la sécurité',
+    item_q:"Qu'avez-vous vu ?", item_hint:'Sélectionnez une option',
+    item_t1:'Sac / bagage', item_t2:'Boîte / colis', item_t3:'Sac à dos', item_t4:'Autre objet',
+    item_where:'Où se trouve-t-il ?',
+    tier3_msg:'Cela semble urgent — appelez le 117 directement.', tier3_call:'Appeler le 117',
+    lang:'FR', badge_sub:'Marché de Noël',
+  },
+  it:{
+    s1head:'Qualcosa non va?',
+    s1sub:'Segnala cosa hai visto — velocemente e in modo anonimo.<br>Nessun dato personale. Strettamente confidenziale.',
+    s1btn:'Avvia segnalazione', t1:'Meno di 2 min', t2:'Anonimo', t3:'Privacy svizzera',
+    call117:'Aiuto immediato? Chiama il 117.',
+    rtype_head:'Cosa vuoi segnalare?', rtype_sub:'Seleziona il tipo di situazione osservata.',
+    rtype_person_title:'Preoccupazione per una persona',
+    rtype_person_desc:'Molestie, aggressione, disagio, ubriachezza, bambino non accompagnato',
+    rtype_item_title:'Bagaglio o oggetto incustodito',
+    rtype_item_desc:'Oggetto sospetto o abbandonato al mercato',
+    obs_q:'Cosa hai visto?', obs_hint:'Seleziona tutto ciò che si applica',
+    obs1:'Molestia sessuale', obs2:'Aggressione / minaccia', obs3:'Persona ubriaca',
+    obs4:'Drink adulterato', obs5:'Bambino non accompagnato', obs6:'Emergenza medica',
+    obs7:'Persona in difficoltà', obs8:'Comportamento sospetto',
+    where:'Dove sta succedendo?', when:'Quando?', now:'Adesso', earlier:'Prima oggi',
+    details_head:'Qualche dettaglio in più',
+    details_hint:'Abbigliamento, direzione, qualsiasi cosa utile per la sicurezza.',
+    ta_placeholder:'es. Giacca rossa, vicino al vin brulé, verso il lago…',
+    contact_lbl:'Contattarti?', contact_hint:'Solo se necessario per un seguito. Mai condiviso.',
+    send:'Invia segnalazione',
+    done_head:'Segnalazione inviata al team di sicurezza.',
+    done_sub:"La tua osservazione è in revisione.<br>Nessun dato personale raccolto.",
+    done_alert:"<strong>Se la situazione peggiora</strong>, chiama il 117 immediatamente.",
+    item_title:'Oggetto incustodito', item_sub:'Segnalazione inoltrata direttamente alla sicurezza',
+    item_q:'Cosa hai visto?', item_hint:'Seleziona uno',
+    item_t1:'Borsa / bagaglio', item_t2:'Scatola / pacco', item_t3:'Zaino', item_t4:'Altro oggetto',
+    item_where:"Dov'è?",
+    tier3_msg:'Sembra urgente — chiama il 117 direttamente.', tier3_call:'Chiama il 117',
+    lang:'IT', badge_sub:'Mercatino di Natale',
+  },
+  es:{
+    s1head:'¿Algo no está bien?',
+    s1sub:'Reporta lo que viste — rápido y anónimamente.<br>Sin datos personales. Estrictamente confidencial.',
+    s1btn:'Hacer un reporte', t1:'Menos de 2 min', t2:'Anónimo', t3:'Privacidad suiza',
+    call117:'¿Ayuda inmediata? Llama al 117.',
+    rtype_head:'¿Qué deseas reportar?', rtype_sub:'Selecciona el tipo de situación observada.',
+    rtype_person_title:'Preocupación por una persona',
+    rtype_person_desc:'Acoso, agresión, angustia, intoxicación, niño sin acompañante',
+    rtype_item_title:'Bolsa u objeto abandonado',
+    rtype_item_desc:'Objeto sospechoso o sin dueño en el mercado',
+    obs_q:'¿Qué presenciaste?', obs_hint:'Selecciona todo lo que aplique',
+    obs1:'Acoso sexual', obs2:'Agresión / amenaza', obs3:'Persona ebria',
+    obs4:'Bebida adulterada', obs5:'Niño sin supervisión', obs6:'Emergencia médica',
+    obs7:'Persona en peligro', obs8:'Comportamiento sospechoso',
+    where:'¿Dónde está pasando?', when:'¿Cuándo?', now:'Ahora mismo', earlier:'Antes hoy',
+    details_head:'Un poco más de detalle',
+    details_hint:'Ropa, dirección, cualquier cosa útil para seguridad.',
+    ta_placeholder:'ej. Chaqueta roja, cerca del puesto de vino caliente, hacia el lago…',
+    contact_lbl:'¿Te contactamos?', contact_hint:'Solo si se necesita seguimiento. Nunca compartido.',
+    send:'Enviar reporte',
+    done_head:'Reporte enviado al equipo de seguridad.',
+    done_sub:'Tu observación está siendo revisada.<br>No se recopilaron datos personales.',
+    done_alert:'<strong>Si la situación escala</strong>, llama al 117 de inmediato.',
+    item_title:'Objeto abandonado', item_sub:'Reporte enviado directamente a seguridad',
+    item_q:'¿Qué viste?', item_hint:'Selecciona uno',
+    item_t1:'Maleta / bolsa', item_t2:'Caja / paquete', item_t3:'Mochila', item_t4:'Otro objeto',
+    item_where:'¿Dónde está?',
+    tier3_msg:'Esto parece urgente — llama al 117 directamente.', tier3_call:'Llamar al 117',
+    lang:'ES', badge_sub:'Mercado Navideño',
+  },
+  zh:{
+    s1head:'发现可疑情况？',
+    s1sub:'匿名举报，无需留下任何个人信息。<br>全程保密。',
+    s1btn:'开始举报', t1:'不到2分钟', t2:'完全匿名', t3:'瑞士数据保护',
+    call117:'需要立即帮助？拨打117。',
+    rtype_head:'您想举报什么？', rtype_sub:'请选择您观察到的情况类型。',
+    rtype_person_title:'对某人有顾虑',
+    rtype_person_desc:'骚扰、袭击、困境、醉酒、无人陪伴儿童',
+    rtype_item_title:'无人看管的行李或物品',
+    rtype_item_desc:'圣诞市集上可疑或无人认领的物品',
+    obs_q:'您目睹了什么？', obs_hint:'可多选',
+    obs1:'性骚扰', obs2:'袭击／威胁', obs3:'醉酒人员',
+    obs4:'饮料被下药', obs5:'无人陪伴儿童', obs6:'医疗紧急情况',
+    obs7:'处于困境的人', obs8:'可疑行为',
+    where:'事情发生在哪里？', when:'何时？', now:'刚刚', earlier:'今天稍早',
+    details_head:'再提供一些细节',
+    details_hint:'衣着、方向，任何对安保有用的信息。',
+    ta_placeholder:'例如：红色夹克，在热红酒摊附近，朝湖边方向走…',
+    contact_lbl:'是否希望联系您？', contact_hint:'仅在需要跟进时使用，不对外共享。',
+    send:'发送举报',
+    done_head:'举报已发送至安保团队。',
+    done_sub:'您的举报正在审查中。<br>未收集任何个人信息。',
+    done_alert:'<strong>如情况升级</strong>，请立即拨打117或联系安保人员。',
+    item_title:'无人看管物品', item_sub:'举报直接转交安保部门',
+    item_q:'您看到了什么？', item_hint:'请选择一项',
+    item_t1:'行李箱 / 包', item_t2:'纸箱 / 快递', item_t3:'背包', item_t4:'其他物品',
+    item_where:'物品在哪里？',
+    tier3_msg:'情况紧急 — 直接拨打117。', tier3_call:'拨打117',
+    lang:'中文', badge_sub:'圣诞市集',
+  },
+  ar:{
+    s1head:'شيء ما يبدو خاطئاً؟',
+    s1sub:'بلّغ عمّا رأيت — بسرعة وبشكل مجهول.<br>لا بيانات شخصية. سري تماماً.',
+    s1btn:'إنشاء بلاغ', t1:'أقل من دقيقتين', t2:'مجهول الهوية', t3:'خصوصية سويسرية',
+    call117:'مساعدة فورية؟ اتصل بـ 117.',
+    rtype_head:'ماذا تريد الإبلاغ عنه؟', rtype_sub:'اختر نوع الوضع الذي لاحظته.',
+    rtype_person_title:'قلق بشأن شخص ما',
+    rtype_person_desc:'تحرش، اعتداء، ضائقة، تسمم، طفل غير مصحوب',
+    rtype_item_title:'حقيبة أو عنصر مهمل',
+    rtype_item_desc:'عنصر مشبوه أو متروك في السوق',
+    obs_q:'ماذا شاهدت؟', obs_hint:'اختر كل ما ينطبق',
+    obs1:'تحرش جنسي', obs2:'اعتداء / تهديد', obs3:'شخص مخمور',
+    obs4:'مشروب مدسوس', obs5:'طفل دون رقابة', obs6:'حالة طوارئ طبية',
+    obs7:'شخص في ضائقة', obs8:'سلوك مريب',
+    where:'أين يحدث هذا؟', when:'متى؟', now:'الآن', earlier:'في وقت سابق اليوم',
+    details_head:'مزيد من التفاصيل',
+    details_hint:'الملابس، الاتجاه، أي شيء مفيد للأمن.',
+    ta_placeholder:'مثال: سترة حمراء، بالقرب من بائع النبيذ الساخن، يتجه نحو البحيرة…',
+    contact_lbl:'التواصل معك؟', contact_hint:'فقط إذا لزم متابعة. لن يُشارك أبداً.',
+    send:'إرسال البلاغ',
+    done_head:'تم إرسال البلاغ إلى فريق الأمن.',
+    done_sub:'ملاحظتك قيد المراجعة.<br>لم يتم جمع أي بيانات شخصية.',
+    done_alert:'<strong>إذا تصاعد الوضع</strong>، اتصل بـ 117 فوراً.',
+    item_title:'عنصر مهمل', item_sub:'يُحال البلاغ مباشرة للأمن',
+    item_q:'ماذا رأيت؟', item_hint:'اختر واحداً',
+    item_t1:'حقيبة / أمتعة', item_t2:'صندوق / طرد', item_t3:'حقيبة ظهر', item_t4:'عنصر آخر',
+    item_where:'أين هو؟',
+    tier3_msg:'يبدو هذا عاجلاً — اتصل بـ 117 مباشرة.', tier3_call:'اتصل بـ 117',
+    lang:'AR', badge_sub:'سوق الميلاد',
+  },
+  hi:{
+    s1head:'कुछ ठीक नहीं लग रहा?',
+    s1sub:'जो देखा वो बताएं — जल्दी और गुमनाम तरीके से।<br>कोई व्यक्तिगत जानकारी नहीं। पूरी तरह गुप्त।',
+    s1btn:'रिपोर्ट शुरू करें', t1:'2 मिनट से कम', t2:'पूरी तरह गुमनाम', t3:'स्विस गोपनीयता',
+    call117:'तुरंत मदद? 117 पर कॉल करें।',
+    rtype_head:'आप क्या रिपोर्ट करना चाहते हैं?', rtype_sub:'जो स्थिति आपने देखी, उसका प्रकार चुनें।',
+    rtype_person_title:'किसी व्यक्ति के बारे में चिंता',
+    rtype_person_desc:'उत्पीड़न, हमला, संकट, नशा, बिना साथ का बच्चा',
+    rtype_item_title:'बिना मालिक का सामान',
+    rtype_item_desc:'बाजार में संदिग्ध या छोड़ा हुआ सामान',
+    obs_q:'आपने क्या देखा?', obs_hint:'जो भी लागू हो, चुनें',
+    obs1:'यौन उत्पीड़न', obs2:'हमला / धमकी', obs3:'नशे में व्यक्ति',
+    obs4:'पेय में मिलावट', obs5:'बिना देखरेख का बच्चा', obs6:'चिकित्सा आपातकाल',
+    obs7:'परेशान व्यक्ति', obs8:'संदिग्ध व्यवहार',
+    where:'यह कहाँ हो रहा है?', when:'कब?', now:'अभी', earlier:'आज पहले',
+    details_head:'थोड़ा और विवरण',
+    details_hint:'कपड़े, दिशा, जो भी सुरक्षा के लिए उपयोगी हो।',
+    ta_placeholder:'जैसे: लाल जैकेट, गर्म वाइन स्टॉल के पास, झील की तरफ जा रहा था…',
+    contact_lbl:'आपसे संपर्क करें?', contact_hint:'केवल ज़रूरत पड़ने पर। साझा नहीं किया जाएगा।',
+    send:'रिपोर्ट भेजें',
+    done_head:'रिपोर्ट सुरक्षा टीम को भेज दी गई।',
+    done_sub:'आपकी टिप्पणी की समीक्षा हो रही है।<br>कोई व्यक्तिगत डेटा एकत्र नहीं किया गया।',
+    done_alert:'<strong>अगर स्थिति बिगड़े</strong>, तो तुरंत 117 पर कॉल करें।',
+    item_title:'बिना मालिक का सामान', item_sub:'रिपोर्ट सीधे सुरक्षा को भेजी जाएगी',
+    item_q:'आपने क्या देखा?', item_hint:'एक विकल्प चुनें',
+    item_t1:'बैग / सूटकेस', item_t2:'डिब्बा / पैकेट', item_t3:'बैकपैक', item_t4:'कोई और चीज़',
+    item_where:'सामान कहाँ है?',
+    tier3_msg:'यह जरूरी लगता है — सीधे 117 पर कॉल करें।', tier3_call:'117 पर कॉल करें',
+    lang:'हि', badge_sub:'क्रिसमस बाज़ार',
+  },
+};
+
+let curLang='de';
+
+function setLang(l){
+  curLang=l;
+  const t=LANG_STRINGS[l];
+  if(!t) return;
+  const set=(id,val,html=false)=>{const el=document.getElementById(id);if(el){if(html)el.innerHTML=val;else el.textContent=val;}};
+  set('s1head',t.s1head);
+  set('s1sub',t.s1sub,true);
+  set('s1btn',t.s1btn);
+  set('i-t1',t.t1); set('i-t2',t.t2); set('i-t3',t.t3);
+  set('i-call117',t.call117);
+  set('i-rtype-head',t.rtype_head); set('i-rtype-sub',t.rtype_sub);
+  set('i-rtype-person-title',t.rtype_person_title); set('i-rtype-person-desc',t.rtype_person_desc);
+  set('i-rtype-item-title',t.rtype_item_title); set('i-rtype-item-desc',t.rtype_item_desc);
+  set('i-obs-q',t.obs_q); set('i-obs-hint',t.obs_hint);
+  set('i-obs1',t.obs1); set('i-obs2',t.obs2); set('i-obs3',t.obs3); set('i-obs4',t.obs4);
+  set('i-obs5',t.obs5); set('i-obs6',t.obs6); set('i-obs7',t.obs7); set('i-obs8',t.obs8);
+  set('i-where',t.where); set('i-when',t.when);
+  set('tNow',t.now); set('tEarly',t.earlier);
+  set('i-details-head',t.details_head); set('i-details-hint',t.details_hint);
+  const ta=document.getElementById('ta-notes'); if(ta) ta.placeholder=t.ta_placeholder;
+  set('i-contact-lbl',''); // rebuild with optional tag
+  const cl=document.getElementById('i-contact-lbl');
+  if(cl) cl.innerHTML=t.contact_lbl+' <span class="opt-tag">Optional</span>';
+  set('i-contact-hint',t.contact_hint);
+  set('i-send-btn',t.send);
+  set('i-done-head',t.done_head); set('i-done-sub',t.done_sub,true); set('i-done-alert',t.done_alert,true);
+  set('i-item-title',t.item_title); set('i-item-sub',t.item_sub);
+  set('i-item-q',t.item_q); set('i-item-hint',t.item_hint);
+  set('i-item-t1',t.item_t1); set('i-item-t2',t.item_t2); set('i-item-t3',t.item_t3); set('i-item-t4',t.item_t4);
+  set('i-item-where',t.item_where);
+  set('i-tier3-msg',t.tier3_msg); set('i-tier3-call',t.tier3_call);
+  set('langLabel',t.lang);
+  const badge=document.querySelector('.stzh-label'); if(badge) badge.textContent=t.badge_sub;
+  document.querySelectorAll('.lang-option').forEach(btn=>{
+    btn.classList.toggle('cur', btn.getAttribute('onclick').includes("'"+l+"'"));
+  });
+  closeLangPicker();
+  updateTierBadge();
+}
+
+function renderDB(){
+  const tot=NODES.reduce((s,z)=>s+z.nodes.length,0);
+  document.getElementById('dbTotal').textContent=tot+' Standorte';
+  document.getElementById('dbZones').innerHTML=NODES.map(z=>
+    `<div><div class="db-zh">${z.zone}<span>· ${z.nodes.length} Nodes</span></div><div class="db-nodes">${
+      z.nodes.map(n=>`<div class="db-node"><div class="nid">${n.id}</div><div class="nnm">${n.name}</div><div class="nqr">${n.qr}</div></div>`).join('')
+    }</div></div>`).join('');
+  document.getElementById('dbStats').innerHTML=`
+    <div class="stat"><div class="n">${tot}</div><div class="l">Total Nodes</div></div>
+    <div class="stat"><div class="n">${NODES.length}</div><div class="l">Zonen</div></div>
+    <div class="stat"><div class="n">${NODES.find(z=>z.code==='TREE')?.nodes.length||0}</div><div class="l">Baumring</div></div>
+    <div class="stat"><div class="n">8</div><div class="l">Sprachen</div></div>`;
+}
+
+renderDB();
+updateTierBadge();
+</script>
+</body>
+</html>
